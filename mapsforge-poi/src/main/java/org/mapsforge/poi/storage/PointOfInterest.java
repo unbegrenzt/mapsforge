@@ -1,6 +1,7 @@
 /*
  * Copyright 2010, 2011 mapsforge.org
- * Copyright 2015-2016 devemux86
+ * Copyright 2015-2017 devemux86
+ * Copyright 2017 Gustl22
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -18,9 +19,9 @@ package org.mapsforge.poi.storage;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.Tag;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * This class represents a point of interest. Every POI should be uniquely identifiable by its id,
@@ -30,15 +31,19 @@ public class PointOfInterest {
     private final long id;
     private final double latitude;
     private final double longitude;
-    private final String data;
-    private final PoiCategory category;
+    private final Set<Tag> tags;
+    private final Set<PoiCategory> categories;
 
-    public PointOfInterest(long id, double latitude, double longitude, String data, PoiCategory category) {
+    public PointOfInterest(long id, double latitude, double longitude, String name, PoiCategory category) {
+        this(id, latitude, longitude, Collections.singleton(new Tag("name", name)), Collections.singleton(category));
+    }
+
+    public PointOfInterest(long id, double latitude, double longitude, Set<Tag> tags, Set<PoiCategory> categories) {
         this.id = id;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.data = data;
-        this.category = category;
+        this.tags = (tags == null) ? Collections.<Tag>emptySet() : tags;
+        this.categories = (categories == null) ? Collections.<PoiCategory>emptySet() : categories;
     }
 
     @Override
@@ -53,17 +58,24 @@ public class PointOfInterest {
     }
 
     /**
-     * @return category of this point of interest.
+     * @return all categories of this point of interest.
      */
-    public PoiCategory getCategory() {
-        return this.category;
+    public Set<PoiCategory> getCategories() {
+        return this.categories;
     }
 
     /**
-     * @return data of this point of interest.
+     * @return category of this point of interest.
      */
-    public String getData() {
-        return this.data;
+    public PoiCategory getCategory() {
+        if (categories.size() > 1) {
+            //TODO return the highest level of its categories
+            return categories.toArray(new PoiCategory[categories.size()])[0];
+        }
+        if (categories.size() == 1) {
+            return categories.toArray(new PoiCategory[categories.size()])[0];
+        }
+        return null;
     }
 
     /**
@@ -105,12 +117,10 @@ public class PointOfInterest {
      * @return name of this point of interest at preferred language
      */
     public String getName(String language) {
-        List<Tag> tags = getTags();
-
         if (language != null && language.trim().length() > 0) {
             // Exact match
             String nameStr = "name:" + language.toLowerCase(Locale.ENGLISH);
-            for (Tag tag : tags) {
+            for (Tag tag : this.tags) {
                 if (nameStr.equalsIgnoreCase(tag.key)) {
                     return tag.value;
                 }
@@ -119,7 +129,7 @@ public class PointOfInterest {
             // Fall back to base
             String baseLanguage = language.split("[-_]")[0];
             nameStr = "name:" + baseLanguage.toLowerCase(Locale.ENGLISH);
-            for (Tag tag : tags) {
+            for (Tag tag : this.tags) {
                 if (nameStr.equalsIgnoreCase(tag.key)) {
                     return tag.value;
                 }
@@ -133,32 +143,23 @@ public class PointOfInterest {
             }
         }
 
-        if (tags.isEmpty()) {
-            return data;
-        }
-
         return null;
     }
 
     /**
      * @return tags of this point of interest.
      */
-    public List<Tag> getTags() {
-        List<Tag> tags = new ArrayList<>();
-        if (this.data != null && this.data.trim().length() > 0) {
-            String[] split = this.data.split("\r");
-            for (String s : split) {
-                if (s.indexOf(Tag.KEY_VALUE_SEPARATOR) > -1) {
-                    tags.add(new Tag(s));
-                }
-            }
-        }
+    public Set<Tag> getTags() {
         return tags;
     }
 
     @Override
     public String toString() {
-        return "POI: (" + this.latitude + ',' + this.longitude + ") " + this.data + ' '
-                + this.category.getID();
+        StringBuilder sb = new StringBuilder();
+        sb.append("POI: (").append(this.latitude).append(',').append(this.longitude).append(") ").append(this.tags.toString());
+        for (PoiCategory category : categories) {
+            sb.append(' ').append(category.getID());
+        }
+        return sb.toString();
     }
 }

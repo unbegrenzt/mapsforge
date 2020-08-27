@@ -1,6 +1,6 @@
 /*
  * Copyright 2014 Ludwig M Brinckmann
- * Copyright 2015-2017 devemux86
+ * Copyright 2015-2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -16,7 +16,9 @@
 package org.mapsforge.samples.android;
 
 import android.os.Bundle;
-
+import org.mapsforge.core.model.Dimension;
+import org.mapsforge.core.model.MapPosition;
+import org.mapsforge.core.util.LatLongUtils;
 import org.mapsforge.map.android.util.AndroidUtil;
 import org.mapsforge.map.android.util.MapViewerTemplate;
 import org.mapsforge.map.layer.renderer.TileRendererLayer;
@@ -30,13 +32,13 @@ import org.mapsforge.map.rendertheme.XmlRenderTheme;
 public class SimplestMapViewer extends MapViewerTemplate {
 
     /**
-     * This MapViewer uses the built-in Osmarender theme.
+     * This MapViewer uses the built-in default theme.
      *
      * @return the render theme to use
      */
     @Override
     protected XmlRenderTheme getRenderTheme() {
-        return InternalRenderTheme.OSMARENDER;
+        return InternalRenderTheme.DEFAULT;
     }
 
     /**
@@ -64,7 +66,7 @@ public class SimplestMapViewer extends MapViewerTemplate {
      */
     @Override
     protected String getMapFileName() {
-        return "germany.map";
+        return "berlin.map";
     }
 
     /**
@@ -90,6 +92,13 @@ public class SimplestMapViewer extends MapViewerTemplate {
         this.tileCaches.add(AndroidUtil.createTileCache(this, getPersistableId(),
                 this.mapView.getModel().displayModel.getTileSize(), this.getScreenRatio(),
                 this.mapView.getModel().frameBufferModel.getOverdrawFactor()));
+    }
+
+    @Override
+    protected MapPosition getInitialPosition() {
+        int tileSize = this.mapView.getModel().displayModel.getTileSize();
+        byte zoomLevel = LatLongUtils.zoomForBounds(new Dimension(tileSize * 4, tileSize * 4), getMapFile().boundingBox(), tileSize);
+        return new MapPosition(getMapFile().boundingBox().getCenterPoint(), zoomLevel);
     }
 
     @Override

@@ -1,6 +1,7 @@
 /*
- * Copyright 2015-2017 devemux86
- * Copyright 2017 Gustl22
+ * Copyright 2015-2019 devemux86
+ * Copyright 2017-2018 Gustl22
+ * Copyright 2019 Kamil Donoval
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -15,46 +16,23 @@
  */
 package org.mapsforge.poi.writer;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
-
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
-import org.mapsforge.poi.storage.DbConstants;
-import org.mapsforge.poi.storage.PoiCategory;
-import org.mapsforge.poi.storage.PoiCategoryFilter;
-import org.mapsforge.poi.storage.PoiCategoryManager;
-import org.mapsforge.poi.storage.UnknownPoiCategoryException;
-import org.mapsforge.poi.storage.WhitelistPoiCategoryFilter;
+import org.mapsforge.poi.storage.*;
 import org.mapsforge.poi.writer.logging.LoggerWrapper;
 import org.mapsforge.poi.writer.logging.ProgressManager;
 import org.mapsforge.poi.writer.model.PoiWriterConfiguration;
 import org.openstreetmap.osmosis.core.container.v0_6.EntityContainer;
-import org.openstreetmap.osmosis.core.domain.v0_6.Entity;
-import org.openstreetmap.osmosis.core.domain.v0_6.Node;
-import org.openstreetmap.osmosis.core.domain.v0_6.Relation;
-import org.openstreetmap.osmosis.core.domain.v0_6.Tag;
-import org.openstreetmap.osmosis.core.domain.v0_6.Way;
-import org.openstreetmap.osmosis.core.domain.v0_6.WayNode;
+import org.openstreetmap.osmosis.core.domain.v0_6.*;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
+import java.text.Normalizer;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Stack;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,9 +65,12 @@ public final class PoiWriter {
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
     private static final Pattern NAME_LANGUAGE_PATTERN = Pattern.compile("(name)(:)([a-zA-Z]{1,3}(?:[-_][a-zA-Z0-9]{1,8})*)");
+    private static final Pattern NAME_NORMALIZE_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 
-    private final PoiWriterConfiguration configuration;
+    final PoiWriterConfiguration configuration;
     private final ProgressManager progressManager;
+
+    private final NumberFormat nfCounts = NumberFormat.getInstance();
 
     // Available categories
     private final PoiCategoryManager categoryManager;
@@ -104,13 +85,14 @@ public final class PoiWriter {
     private GeoTagger geoTagger;
 
     // Statistics
-    private int nNodes = 0;
-    private int nWays = 0;
-    private int nRelations = 0;
-    private int poiAdded = 0;
+    private long nNodes = 0;
+    private long nWays = 0;
+    private long nRelations = 0;
+    private long poiAdded = 0;
 
     // Database
     Connection conn = null;
+    private PreparedStatement pStmtCatMap = null;
     private PreparedStatement pStmtData = null;
     private PreparedStatement pStmtIndex = null;
     private PreparedStatement pStmtNodesC = null;
@@ -120,6 +102,8 @@ public final class PoiWriter {
     private PoiWriter(PoiWriterConfiguration configuration, ProgressManager progressManager) {
         this.configuration = configuration;
         this.progressManager = progressManager;
+
+        nfCounts.setGroupingUsed(true);
 
         LOGGER.info("Loading categories...");
 
@@ -164,6 +148,7 @@ public final class PoiWriter {
         this.progressManager.setMessage("Committing...");
         this.pStmtIndex.executeBatch();
         this.pStmtData.executeBatch();
+        this.pStmtCatMap.executeBatch();
         if (this.configuration.isGeoTags()) {
             this.geoTagger.commit();
         }
@@ -178,8 +163,6 @@ public final class PoiWriter {
             this.geoTagger.processBoundaries();
         }
         NumberFormat nfMegabyte = NumberFormat.getInstance();
-        NumberFormat nfCounts = NumberFormat.getInstance();
-        nfCounts.setGroupingUsed(true);
         nfMegabyte.setMaximumFractionDigits(2);
 
         try {
@@ -209,7 +192,7 @@ public final class PoiWriter {
     private void filterCategories() throws SQLException {
         LOGGER.info("Filtering categories...");
         PreparedStatement pStmtChildren = this.conn.prepareStatement("SELECT COUNT(*) FROM poi_categories WHERE parent = ?;");
-        PreparedStatement pStmtPoi = this.conn.prepareStatement("SELECT COUNT(*) FROM poi_data WHERE category = ?;");
+        PreparedStatement pStmtPoi = this.conn.prepareStatement("SELECT COUNT(*) FROM poi_category_map WHERE category = ?;");
         PreparedStatement pStmtDel = this.conn.prepareStatement("DELETE FROM poi_categories WHERE id = ?;");
         Statement stmt = this.conn.createStatement();
         ResultSet rs = stmt.executeQuery("SELECT id FROM poi_categories ORDER BY id;");
@@ -224,6 +207,7 @@ public final class PoiWriter {
                     ResultSet rsPoi = pStmtPoi.executeQuery();
                     if (rsPoi.next()) {
                         long nPoi = rsPoi.getLong(1);
+                        // If category not have POI, delete it from DB
                         if (nPoi == 0) {
                             pStmtDel.setInt(1, id);
                             pStmtDel.executeUpdate();
@@ -296,6 +280,17 @@ public final class PoiWriter {
     }
 
     /**
+     * Normalize / remove accents.
+     *
+     * @param str string with accents
+     * @return string without accents
+     */
+    private String normalize(String str) {
+        String normalizedString = Normalizer.normalize(str, Normalizer.Form.NFD);
+        return NAME_NORMALIZE_PATTERN.matcher(normalizedString).replaceAll("");
+    }
+
+    /**
      * Post-process.
      */
     private void postProcess() throws SQLException {
@@ -326,15 +321,18 @@ public final class PoiWriter {
         stmt.execute(DbConstants.DROP_NODES_STATEMENT);
         stmt.execute(DbConstants.DROP_METADATA_STATEMENT);
         stmt.execute(DbConstants.DROP_INDEX_STATEMENT);
+        stmt.execute(DbConstants.DROP_CATEGORY_MAP_STATEMENT);
         stmt.execute(DbConstants.DROP_DATA_STATEMENT);
         stmt.execute(DbConstants.DROP_CATEGORIES_STATEMENT);
         stmt.execute(DbConstants.CREATE_CATEGORIES_STATEMENT);
         stmt.execute(DbConstants.CREATE_DATA_STATEMENT);
+        stmt.execute(DbConstants.CREATE_CATEGORY_MAP_STATEMENT);
         stmt.execute(DbConstants.CREATE_INDEX_STATEMENT);
         stmt.execute(DbConstants.CREATE_METADATA_STATEMENT);
         stmt.execute(DbConstants.CREATE_NODES_STATEMENT);
         stmt.execute(DbConstants.CREATE_WAYNODES_STATEMENT);
 
+        this.pStmtCatMap = this.conn.prepareStatement(DbConstants.INSERT_CATEGORY_MAP_STATEMENT);
         this.pStmtData = this.conn.prepareStatement(DbConstants.INSERT_DATA_STATEMENT);
         this.pStmtIndex = this.conn.prepareStatement(DbConstants.INSERT_INDEX_STATEMENT);
 
@@ -378,6 +376,11 @@ public final class PoiWriter {
                 if (this.nNodes == 0) {
                     LOGGER.info("Processing nodes...");
                 }
+                if (this.configuration.isProgressLogs()) {
+                    if (nNodes % 100000 == 0) {
+                        System.out.print("Progress: Nodes " + nfCounts.format(nNodes) + " \r");
+                    }
+                }
                 ++this.nNodes;
                 if (this.configuration.isWays()) {
                     writeNode(node);
@@ -397,6 +400,11 @@ public final class PoiWriter {
                             e.printStackTrace();
                         }
                     }
+                    if (this.configuration.isProgressLogs()) {
+                        if (nWays % 10000 == 0) {
+                            System.out.print("Progress: Ways " + nfCounts.format(nWays) + " \r");
+                        }
+                    }
                     ++this.nWays;
                     processWay(way);
                 }
@@ -409,6 +417,11 @@ public final class PoiWriter {
                         this.geoTagger.commit();
                     }
                     this.geoTagger.filterBoundaries(relation);
+                    if (this.configuration.isProgressLogs()) {
+                        if (nRelations % 10000 == 0) {
+                            System.out.print("Progress: Relations " + nfCounts.format(nRelations) + " \r");
+                        }
+                    }
                     ++this.nRelations;
                 }
                 break;
@@ -435,7 +448,7 @@ public final class PoiWriter {
             return;
         }
 
-        // Only add named entities
+        // Only add named entities (if set)
         if (this.configuration.isNames()) {
             String name = getTagValue(entity.getTags(), "name");
             if (name == null || name.isEmpty()) {
@@ -444,6 +457,8 @@ public final class PoiWriter {
         }
 
         // Process entity
+        Map<String, String> tagMap = new TreeMap<>();
+        Set<PoiCategory> categories = new HashSet<>();
         for (Tag tag : entity.getTags()) {
             String key = tag.getKey().toLowerCase(Locale.ENGLISH);
             if (this.tagMappingResolver.getMappingTags().contains(key)) {
@@ -453,18 +468,29 @@ public final class PoiWriter {
                     // Get categories from tag
                     List<PoiCategory> pcs = this.tagMappingResolver.getCategoriesFromTag(tagStr);
 
+                    // Get categories from key, if tag wasn't matched
+                    // Note: key categories should be parents of their value categories
+                    if (pcs == null) {
+                        pcs = this.tagMappingResolver.getCategoriesFromTag(key);
+                    }
+
                     if (pcs != null) {
                         for (PoiCategory pc : pcs) {
                             // Add entity if its category matches
                             if (this.categoryFilter.isAcceptedCategory(pc)) {
-                                // Collect the POI tags in a sorted manner
-                                Map<String, String> tagMap = new TreeMap<>();
-                                for (Tag t : entity.getTags()) {
-                                    tagMap.put(t.getKey().toLowerCase(Locale.ENGLISH), t.getValue());
+                                // Collect the POI tags in a sorted manner (once)
+                                if (tagMap.isEmpty()) {
+                                    for (Tag t : entity.getTags()) {
+                                        tagMap.put(t.getKey().toLowerCase(Locale.ENGLISH), t.getValue());
+
+                                        // If normalize is enabled and key == name
+                                        if (configuration.isNormalize() && t.getKey().toLowerCase(Locale.ENGLISH).equals("name")) {
+                                            String normalizedValue = normalize(t.getValue().toLowerCase(Locale.ROOT));
+                                            tagMap.put("normalized_name", normalizedValue);
+                                        }
+                                    }
                                 }
-                                // Store POI
-                                ++this.poiAdded;
-                                writePOI(this.poiAdded, latitude, longitude, tagMap, pc);
+                                categories.add(pc);
                             }
                         }
                     }
@@ -472,6 +498,11 @@ public final class PoiWriter {
                     LOGGER.warning("The '" + tagStr + "' tag refers to a POI that does not exist: " + e.getMessage());
                 }
             }
+        }
+
+        // Store POI
+        if (!tagMap.isEmpty()) {
+            writePOI(this.poiAdded++, latitude, longitude, tagMap, categories);
         }
     }
 
@@ -583,11 +614,14 @@ public final class PoiWriter {
         // Bounds
         pStmtMetadata.setString(1, DbConstants.METADATA_BOUNDS);
         BoundingBox bb = this.configuration.getBboxConfiguration();
-        if (bb != null) {
-            pStmtMetadata.setString(2, bb.minLatitude + "," + bb.minLongitude + "," + bb.maxLatitude + "," + bb.maxLongitude);
-        } else {
-            pStmtMetadata.setNull(2, Types.NULL);
+        if (bb == null) {
+            // Calculate bounding box from poi coordinates
+            Statement stmt = this.conn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT MIN(minLat), MIN(minLon), MAX(maxLat), MAX(maxLon) FROM poi_index;");
+            rs.next();
+            bb = new BoundingBox(rs.getDouble(1), rs.getDouble(2), rs.getDouble(3), rs.getDouble(4));
         }
+        pStmtMetadata.setString(2, bb.minLatitude + "," + bb.minLongitude + "," + bb.maxLatitude + "," + bb.maxLongitude);
         pStmtMetadata.addBatch();
 
         // Comment
@@ -656,7 +690,7 @@ public final class PoiWriter {
     /**
      * Write a POI to the database.
      */
-    private void writePOI(long id, double latitude, double longitude, Map<String, String> poiData, PoiCategory category) {
+    private void writePOI(long id, double latitude, double longitude, Map<String, String> poiData, Set<PoiCategory> categories) {
         try {
             // Index data
             this.pStmtIndex.setLong(1, id);
@@ -664,12 +698,12 @@ public final class PoiWriter {
             this.pStmtIndex.setDouble(3, latitude);
             this.pStmtIndex.setDouble(4, longitude);
             this.pStmtIndex.setDouble(5, longitude);
+            this.pStmtIndex.addBatch();
 
             // POI data
             this.pStmtData.setLong(1, id);
-
-            // If all important data should be written to DB
             if (this.configuration.isAllTags()) {
+                // All tags should be written to DB
                 this.pStmtData.setString(2, tagsToString(poiData));
             } else {
                 // Use preferred language
@@ -696,18 +730,24 @@ public final class PoiWriter {
                     this.pStmtData.setNull(2, Types.NULL);
                 }
             }
-
-            this.pStmtData.setInt(3, category.getID());
-
-            this.pStmtIndex.addBatch();
             this.pStmtData.addBatch();
+
+            // Categories data
+            this.pStmtCatMap.setLong(1, id);
+            for (PoiCategory category : categories) {
+                this.pStmtCatMap.setInt(2, category.getID());
+                this.pStmtCatMap.addBatch();
+            }
+
 
             if (this.poiAdded % BATCH_LIMIT == 0) {
                 this.pStmtIndex.executeBatch();
                 this.pStmtData.executeBatch();
+                this.pStmtCatMap.executeBatch();
 
                 this.pStmtIndex.clearBatch();
                 this.pStmtData.clearBatch();
+                this.pStmtCatMap.clearBatch();
             }
         } catch (SQLException e) {
             e.printStackTrace();

@@ -1,6 +1,7 @@
 /*
  * Copyright 2013-2015 Ludwig M Brinckmann
- * Copyright 2014-2017 devemux86
+ * Copyright 2014-2020 devemux86
+ * Copyright 2017 usrusr
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -26,6 +27,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -33,15 +35,25 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 
 /**
  * Start screen for the sample activities.
  */
 public class Samples extends Activity {
-    private Button createButton(final Class<?> clazz, String text, final View.OnClickListener customListener) {
+    /**
+     * Serves as a substitute for command line arguments for easy launches during development.
+     */
+    public static Uri launchUrl;
+
+    private Button createButton(Class<?> clazz) {
+        return this.createButton(clazz, null, null);
+    }
+
+    private Button createButton(final Class<?> clazz, String text, View.OnClickListener customListener) {
         Button button = new Button(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+            button.setAllCaps(false);
         if (text == null) {
             button.setText(clazz.getSimpleName());
         } else {
@@ -64,7 +76,7 @@ public class Samples extends Activity {
         TextView textView = new TextView(this);
         textView.setGravity(Gravity.CENTER);
         if (text == null) {
-            textView.setText("---------------");
+            textView.setText("----------");
         } else {
             textView.setText(text);
         }
@@ -76,19 +88,29 @@ public class Samples extends Activity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_samples);
-        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.samples);
-        linearLayout.addView(createButton(DefaultTheme.class, "Default Theme", null));
-        linearLayout.addView(createButton(DiagnosticsMapViewer.class, "Diagnostics", null));
-        linearLayout.addView(createButton(SimplestMapViewer.class, "Simplest Map Viewer", null));
+        LinearLayout linearLayout = findViewById(R.id.samples);
+        linearLayout.addView(createButton(GettingStarted.class));
+        linearLayout.addView(createLabel(null));
+        linearLayout.addView(createButton(SimplestMapViewer.class));
+        linearLayout.addView(createButton(DiagnosticsMapViewer.class));
+
+        linearLayout.addView(createLabel("Features"));
+        linearLayout.addView(createButton(LocationOverlayMapViewer.class));
+        linearLayout.addView(createButton(PoiSearchViewer.class, null, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startupDialog("poi", R.string.startup_message_poi, PoiSearchViewer.class);
+            }
+        }));
 
         linearLayout.addView(createLabel("Vector Features"));
-        linearLayout.addView(createButton(MultiLingualMapViewer.class, "Multi-lingual maps", null));
-        linearLayout.addView(createButton(StyleMenuMapViewer.class, "Style Menu", null));
+        linearLayout.addView(createButton(MultiLingualMapViewer.class));
+        linearLayout.addView(createButton(StyleMenuMapViewer.class));
 
         linearLayout.addView(createLabel("Raster Maps"));
-        linearLayout.addView(createButton(DownloadLayerViewer.class, "Downloading Mapnik", null));
-        linearLayout.addView(createButton(DownloadCustomLayerViewer.class, "Custom Tile Source", null));
-        linearLayout.addView(createButton(TileStoreLayerViewer.class, "Tile Store (TMS)", new View.OnClickListener() {
+        linearLayout.addView(createButton(DownloadLayerViewer.class));
+        linearLayout.addView(createButton(DownloadCustomLayerViewer.class));
+        linearLayout.addView(createButton(TileStoreLayerViewer.class, null, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startupDialog("tilestore", R.string.startup_message_tilestore, TileStoreLayerViewer.class);
@@ -96,38 +118,23 @@ public class Samples extends Activity {
         }));
 
         linearLayout.addView(createLabel("Overlays"));
-        linearLayout.addView(createButton(OverlayMapViewer.class, "Overlay", null));
-        linearLayout.addView(createButton(GridMapViewer.class, "Geographical Grid", null));
-        linearLayout.addView(createButton(BubbleOverlay.class, "Bubble Overlay", null));
-        linearLayout.addView(createButton(ViewOverlayViewer.class, "View Overlay", null));
-        linearLayout.addView(createButton(LocationOverlayMapViewer.class, "Location Overlay", null));
-        linearLayout.addView(createButton(ChangingBitmaps.class, "Changing Bitmaps", null));
-        linearLayout.addView(createButton(OverlayWithoutBaseMapViewer.class, "Just Overlays, No Map", null));
-        linearLayout.addView(createButton(TwoMaps.class, "Two Maps Overlaid", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startupDialog("twomaps", R.string.startup_message_twomaps, TwoMaps.class);
-            }
-        }));
+        linearLayout.addView(createButton(OverlayMapViewer.class));
+        linearLayout.addView(createButton(BubbleOverlay.class));
+        linearLayout.addView(createButton(ViewOverlayViewer.class));
 
         linearLayout.addView(createLabel("User Interaction"));
-        linearLayout.addView(createButton(LongPressAction.class, "Long Press Action", null));
-        linearLayout.addView(createButton(MoveAnimation.class, "Move Animation", null));
-        linearLayout.addView(createButton(ZoomToBounds.class, "Zoom to Bounds", null));
-        linearLayout.addView(createButton(ItemListActivity.class, "Fragment List/View", null));
-        linearLayout.addView(createButton(RotateMapViewer.class, "Map Rotation (External)", null));
+        linearLayout.addView(createButton(LongPressAction.class));
+        linearLayout.addView(createButton(ItemListActivity.class));
+        linearLayout.addView(createButton(RotateMapViewer.class));
 
         linearLayout.addView(createLabel("Dual Map Views"));
-        linearLayout.addView(createButton(DualMapViewer.class, "Dual Maps", null));
-        linearLayout.addView(createButton(DualMapViewerWithDifferentDisplayModels.class, "Different DisplayModels", null));
-        linearLayout.addView(createButton(DualMapViewerWithClampedTileSizes.class, "Clamped Tile Sizes", null));
-        linearLayout.addView(createButton(DualMapnikMapViewer.class, "Tied Maps", null));
-        linearLayout.addView(createButton(DualOverviewMapViewer.class, "Overview Map", null));
-        linearLayout.addView(createButton(MultiMapLowResWorld.class, "Low Res World Background", new View.OnClickListener() {
+        linearLayout.addView(createButton(DualMapViewer.class));
+        linearLayout.addView(createButton(DualOverviewMapViewer.class));
+        linearLayout.addView(createButton(MultiMapLowResWorld.class, null, new View.OnClickListener() {
             @Override
-            public void onClick(final View v) {
+            public void onClick(View v) {
                 if (!MultiMapLowResWorld.getWorldMapFile(Samples.this).exists()) {
-                    final AlertDialog.Builder builder = new AlertDialog.Builder(Samples.this);
+                    AlertDialog.Builder builder = new AlertDialog.Builder(Samples.this);
                     builder.setTitle("Warning");
                     builder.setMessage(R.string.startup_message_multimap);
                     builder.setPositiveButton(R.string.downloadnowbutton, new DialogInterface.OnClickListener() {
@@ -136,9 +143,9 @@ public class Samples extends Activity {
                             // TODO show progress and wait for download
                             DownloadManager downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
                             DownloadManager.Request downloadRequest = new DownloadManager.Request(
-                                    Uri.parse("http://download.mapsforge.org/maps/world/world.map"));
+                                    Uri.parse("https://download.mapsforge.org/maps/world/world.map"));
                             downloadRequest.setDescription("Mapsforge low-res world map");
-                            downloadRequest.setDestinationInExternalFilesDir(Samples.this, SamplesApplication.MAPS, MultiMapLowResWorld.getWorldMapFileName());
+                            downloadRequest.setDestinationInExternalFilesDir(Samples.this, null, MultiMapLowResWorld.getWorldMapFileName());
                             downloadManager.enqueue(downloadRequest);
                         }
                     });
@@ -148,32 +155,14 @@ public class Samples extends Activity {
                 }
             }
         }));
-        linearLayout.addView(createButton(SimpleDataStoreMapViewer.class, "Simple User DataStore", null));
 
         linearLayout.addView(createLabel("Experiments"));
-        linearLayout.addView(createButton(HillshadingMapViewer.class, "Hillshading (beta)", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startupDialog("hillshading", R.string.startup_message_hillshading, HillshadingMapViewer.class);
-            }
-        }));
-        linearLayout.addView(createButton(PoiSearchViewer.class, "POI search (beta)", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startupDialog("poi", R.string.startup_message_poi, PoiSearchViewer.class);
-            }
-        }));
-        linearLayout.addView(createButton(ReverseGeocodeViewer.class, "Reverse Geocoding", null));
-        linearLayout.addView(createButton(NightModeViewer.class, "Night mode", null));
-        linearLayout.addView(createButton(RenderThemeChanger.class, "Changing Renderthemes", null));
-        linearLayout.addView(createButton(TileSizeChanger.class, "Changing Tile Size", null));
-        linearLayout.addView(createButton(StackedLayersMapViewer.class, "Stacked Tiles", null));
-        linearLayout.addView(createButton(NoXMLLayout.class, "Without XML Layout", null));
-        linearLayout.addView(createButton(LabelLayerUsingMapDataStoreMapViewer.class, "Separate LabelLayer using MapDataStore", null));
-        linearLayout.addView(createButton(LabelLayerUsingMapDataStoreMapViewerThreaded.class, "Threaded LabelLayer using MapDataStore", null));
-        linearLayout.addView(createButton(LabelLayerUsingLabelCacheMapViewer.class, "Separate LabelLayer using LabelStore", null));
-        linearLayout.addView(createButton(ClusterMapActivity.class, "Marker clustering (alpha)", null));
-        linearLayout.addView(createButton(GroupMarkerExample.class, "Group marker(alpha)", null));
+        linearLayout.addView(createButton(HillshadingMapViewer.class));
+        linearLayout.addView(createButton(ReverseGeocodeViewer.class));
+        linearLayout.addView(createButton(LabelLayerUsingLabelCacheMapViewer.class));
+        linearLayout.addView(createButton(LabelLayerUsingMapDataStoreMapViewer.class));
+        linearLayout.addView(createButton(ClusterMapActivity.class));
+        linearLayout.addView(createButton(GroupMarkerExample.class));
     }
 
     @Override
@@ -210,7 +199,7 @@ public class Samples extends Activity {
         final SharedPreferences preferences = getSharedPreferences("installation", Activity.MODE_PRIVATE);
         final String accepted = "accepted";
         if (!preferences.getBoolean(accepted, false)) {
-            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Warning");
             builder.setCancelable(true);
             builder.setPositiveButton(R.string.startup_dontshowagain,
@@ -222,6 +211,20 @@ public class Samples extends Activity {
                     });
             builder.setMessage(R.string.startup_message);
             builder.show();
+        }
+
+        launchUrl = getIntent().getData();
+        String activity = (launchUrl == null) ? null : launchUrl.getQueryParameter("activity");
+        if (activity != null) {
+            String fqn = Samples.class.getPackage().getName() + "." + activity;
+            try {
+                Class<?> clazz = getClass().getClassLoader().loadClass(fqn);
+                if (Activity.class.isAssignableFrom(clazz)) {
+                    startActivity(new Intent(Samples.this, clazz));
+                }
+            } catch (ClassNotFoundException e) {
+                Log.e(SamplesApplication.TAG, e.getMessage(), e);
+            }
         }
     }
 

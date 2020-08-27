@@ -1,8 +1,9 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2014 Ludwig M Brinckmann
- * Copyright 2014-2017 devemux86
+ * Copyright 2014-2019 devemux86
  * Copyright 2015 Andreas Schildbach
+ * Copyright 2018 mikes222
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -19,16 +20,11 @@ package org.mapsforge.map.android.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
-import android.view.GestureDetector;
-import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
-import android.view.View;
-import android.view.ViewGroup;
-
+import android.view.*;
 import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.Dimension;
@@ -53,8 +49,11 @@ import org.mapsforge.map.util.MapPositionUtil;
 import org.mapsforge.map.util.MapViewProjection;
 import org.mapsforge.map.view.FpsCounter;
 import org.mapsforge.map.view.FrameBuffer;
-import org.mapsforge.map.view.FrameBufferHA;
 import org.mapsforge.map.view.FrameBufferHA2;
+import org.mapsforge.map.view.InputListener;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView, Observer {
 
@@ -111,7 +110,8 @@ public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView
     private final FrameBufferController frameBufferController;
     private final GestureDetector gestureDetector;
     private GestureDetector gestureDetectorExternal;
-    private LayerManager layerManager;
+    private final List<InputListener> inputListeners = new CopyOnWriteArrayList<>();
+    private final LayerManager layerManager;
     private final Handler layoutHandler = new Handler();
     private MapScaleBar mapScaleBar;
     private final MapViewProjection mapViewProjection;
@@ -127,16 +127,18 @@ public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView
     public MapView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB && Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN) {
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+
+        setClickable(true);
         setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
         setWillNotDraw(false);
 
         this.model = new Model();
 
         this.fpsCounter = new FpsCounter(GRAPHIC_FACTORY, this.model.displayModel);
-        if (FrameBufferController.FRAME_BUFFER_HA2)
-            this.frameBuffer = new FrameBufferHA2(this.model.frameBufferModel, this.model.displayModel, GRAPHIC_FACTORY);
-        else
-            this.frameBuffer = new FrameBufferHA(this.model.frameBufferModel, this.model.displayModel, GRAPHIC_FACTORY);
+        this.frameBuffer = new FrameBufferHA2(this.model.frameBufferModel, this.model.displayModel, GRAPHIC_FACTORY);
         this.frameBufferController = FrameBufferController.create(this.frameBuffer, this.model);
 
         this.layerManager = new LayerManager(this, this.model.mapViewPosition, GRAPHIC_FACTORY);
@@ -158,6 +160,15 @@ public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView
         model.mapViewPosition.addObserver(this);
     }
 
+    public void addInputListener(InputListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        } else if (this.inputListeners.contains(listener)) {
+            throw new IllegalArgumentException("listener is already registered: " + listener);
+        }
+        this.inputListeners.add(listener);
+    }
+
     @Override
     public void addLayer(Layer layer) {
         this.layerManager.getLayers().add(layer);
@@ -175,8 +186,7 @@ public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView
     public void destroy() {
         this.touchGestureHandler.destroy();
         this.layoutHandler.removeCallbacksAndMessages(null);
-        this.layerManager.interrupt();
-        this.layerManager = null;
+        this.layerManager.finish();
         this.frameBufferController.destroy();
         this.frameBuffer.destroy();
         if (this.mapScaleBar != null) {
@@ -403,6 +413,18 @@ public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
+    /**
+     * This method is called by internal programs only. The underlying mapView implementation will
+     * notify registered {@link InputListener} about the start of a manual move.
+     * Note that this method may be called multiple times while the move has been started.
+     * Also note that only manual moves get notified.
+     */
+    public void onMoveEvent() {
+        for (InputListener listener : inputListeners) {
+            listener.onMoveEvent();
+        }
+    }
+
     @Override
     protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         this.model.mapViewDimension.setDimension(new Dimension(width, height));
@@ -424,6 +446,27 @@ public class MapView extends ViewGroup implements org.mapsforge.map.view.MapView
             retVal = this.gestureDetector.onTouchEvent(event);
         }
         return retVal;
+    }
+
+    /**
+     * This method is called by internal programs only. The underlying mapView implementation will
+     * notify registered {@link InputListener} about the start of a manual zoom.
+     * Note that this method may be called multiple times while the zoom has been started.
+     * Also note that only manual zooms get notified.
+     */
+    public void onZoomEvent() {
+        for (InputListener listener : inputListeners) {
+            listener.onZoomEvent();
+        }
+    }
+
+    public void removeInputListener(InputListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        } else if (!this.inputListeners.contains(listener)) {
+            throw new IllegalArgumentException("listener is not registered: " + listener);
+        }
+        this.inputListeners.remove(listener);
     }
 
     @Override

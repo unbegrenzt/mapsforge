@@ -1,8 +1,9 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2015 lincomatic
- * Copyright 2015-2017 devemux86
+ * Copyright 2015-2018 devemux86
  * Copyright 2016 mikes222
+ * Copyright 2017-2018 Gustl22
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -46,7 +47,9 @@ public class MapWriterConfiguration {
     private int mapStartZoomLevel;
     private File outputFile;
     private boolean polygonClipping;
+    private boolean polylabel;
     private List<String> preferredLanguages;
+    private boolean progressLogs;
 
     private double simplification;
     private byte simplificationMaxZoom;
@@ -54,6 +57,7 @@ public class MapWriterConfiguration {
     private boolean skipInvalidRelations;
 
     private OSMTagMapping tagMapping;
+    private boolean tagValues;
     private boolean wayClipping;
 
     private String writerVersion;
@@ -302,10 +306,31 @@ public class MapWriterConfiguration {
     }
 
     /**
+     * @return the polylabel
+     */
+    public boolean isPolylabel() {
+        return this.polylabel;
+    }
+
+    /**
+     * @return the progressLogs
+     */
+    public boolean isProgressLogs() {
+        return this.progressLogs;
+    }
+
+    /**
      * @return the skipInvalidRelations
      */
     public boolean isSkipInvalidRelations() {
         return this.skipInvalidRelations;
+    }
+
+    /**
+     * @return the tagValues
+     */
+    public boolean isTagValues() {
+        return this.tagValues;
     }
 
     /**
@@ -341,6 +366,7 @@ public class MapWriterConfiguration {
         } else {
             this.tagMapping = OSMTagMapping.getInstance();
         }
+        this.tagMapping.setTagValues(this.tagValues);
     }
 
     /**
@@ -430,10 +456,24 @@ public class MapWriterConfiguration {
     }
 
     /**
+     * @param polylabel the polylabel to set
+     */
+    public void setPolylabel(boolean polylabel) {
+        this.polylabel = polylabel;
+    }
+
+    /**
      * @param preferredLanguages the preferred language(s) to set
      */
     public void setPreferredLanguages(List<String> preferredLanguages) {
         this.preferredLanguages = preferredLanguages;
+    }
+
+    /**
+     * @param progressLogs the progressLogs to set
+     */
+    public void setProgressLogs(boolean progressLogs) {
+        this.progressLogs = progressLogs;
     }
 
     /**
@@ -463,6 +503,13 @@ public class MapWriterConfiguration {
      */
     public void setSkipInvalidRelations(boolean skipInvalidRelations) {
         this.skipInvalidRelations = skipInvalidRelations;
+    }
+
+    /**
+     * @param tagValues the tagValues to set
+     */
+    public void setTagValues(boolean tagValues) {
+        this.tagValues = tagValues;
     }
 
     /**

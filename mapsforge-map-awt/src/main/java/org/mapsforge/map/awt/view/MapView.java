@@ -1,7 +1,8 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2014 Ludwig M Brinckmann
- * Copyright 2014-2017 devemux86
+ * Copyright 2014-2018 devemux86
+ * Copyright 2018 mikes222
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -39,11 +40,13 @@ import org.mapsforge.map.util.MapPositionUtil;
 import org.mapsforge.map.util.MapViewProjection;
 import org.mapsforge.map.view.FpsCounter;
 import org.mapsforge.map.view.FrameBuffer;
-import org.mapsforge.map.view.FrameBufferHA;
 import org.mapsforge.map.view.FrameBufferHA2;
+import org.mapsforge.map.view.InputListener;
 
 import java.awt.Container;
 import java.awt.Graphics;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MapView extends Container implements org.mapsforge.map.view.MapView {
 
@@ -53,7 +56,8 @@ public class MapView extends Container implements org.mapsforge.map.view.MapView
     private final FpsCounter fpsCounter;
     private final FrameBuffer frameBuffer;
     private final FrameBufferController frameBufferController;
-    private LayerManager layerManager;
+    private final List<InputListener> inputListeners = new CopyOnWriteArrayList<>();
+    private final LayerManager layerManager;
     private MapScaleBar mapScaleBar;
     private final MapViewProjection mapViewProjection;
     private final Model model;
@@ -64,10 +68,7 @@ public class MapView extends Container implements org.mapsforge.map.view.MapView
         this.model = new Model();
 
         this.fpsCounter = new FpsCounter(GRAPHIC_FACTORY, this.model.displayModel);
-        if (FrameBufferController.FRAME_BUFFER_HA2)
-            this.frameBuffer = new FrameBufferHA2(this.model.frameBufferModel, this.model.displayModel, GRAPHIC_FACTORY);
-        else
-            this.frameBuffer = new FrameBufferHA(this.model.frameBufferModel, this.model.displayModel, GRAPHIC_FACTORY);
+        this.frameBuffer = new FrameBufferHA2(this.model.frameBufferModel, this.model.displayModel, GRAPHIC_FACTORY);
         this.frameBufferController = FrameBufferController.create(this.frameBuffer, this.model);
 
         this.layerManager = new LayerManager(this, this.model.mapViewPosition, GRAPHIC_FACTORY);
@@ -82,6 +83,15 @@ public class MapView extends Container implements org.mapsforge.map.view.MapView
         this.mapViewProjection = new MapViewProjection(this);
 
         addListeners();
+    }
+
+    public void addInputListener(InputListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        } else if (this.inputListeners.contains(listener)) {
+            throw new IllegalArgumentException("listener is already registered: " + listener);
+        }
+        this.inputListeners.add(listener);
     }
 
     @Override
@@ -103,8 +113,7 @@ public class MapView extends Container implements org.mapsforge.map.view.MapView
      */
     @Override
     public void destroy() {
-        this.layerManager.interrupt();
-        this.layerManager = null;
+        this.layerManager.finish();
         this.frameBufferController.destroy();
         this.frameBuffer.destroy();
         if (this.mapScaleBar != null) {
@@ -176,6 +185,30 @@ public class MapView extends Container implements org.mapsforge.map.view.MapView
         return this.model;
     }
 
+    /**
+     * This method is called by internal programs only. The underlying mapView implementation will
+     * notify registered {@link InputListener} about the start of a manual move.
+     * Note that this method may be called multiple times while the move has been started.
+     * Also note that only manual moves get notified.
+     */
+    public void onMoveEvent() {
+        for (InputListener listener : inputListeners) {
+            listener.onMoveEvent();
+        }
+    }
+
+    /**
+     * This method is called by internal programs only. The underlying mapView implementation will
+     * notify registered {@link InputListener} about the start of a manual zoom.
+     * Note that this method may be called multiple times while the zoom has been started.
+     * Also note that only manual zooms get notified.
+     */
+    public void onZoomEvent() {
+        for (InputListener listener : inputListeners) {
+            listener.onZoomEvent();
+        }
+    }
+
     @Override
     public void paint(Graphics graphics) {
         super.paint(graphics);
@@ -186,6 +219,15 @@ public class MapView extends Container implements org.mapsforge.map.view.MapView
             this.mapScaleBar.draw(graphicContext);
         }
         this.fpsCounter.draw(graphicContext);
+    }
+
+    public void removeInputListener(InputListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        } else if (!this.inputListeners.contains(listener)) {
+            throw new IllegalArgumentException("listener is not registered: " + listener);
+        }
+        this.inputListeners.remove(listener);
     }
 
     @Override

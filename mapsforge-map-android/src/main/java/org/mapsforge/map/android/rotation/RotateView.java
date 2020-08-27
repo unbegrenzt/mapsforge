@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 devemux86
+ * Copyright 2015-2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -28,6 +28,7 @@ public class RotateView extends ViewGroup {
     private float heading = 0;
     private final Matrix matrix = new Matrix();
     private final float[] points = new float[2];
+    private int saveCount = -1;
     private final SmoothCanvas smoothCanvas = new SmoothCanvas();
 
     public RotateView(Context context) {
@@ -36,6 +37,10 @@ public class RotateView extends ViewGroup {
 
     public RotateView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
     }
 
     @Override
@@ -45,11 +50,14 @@ public class RotateView extends ViewGroup {
             return;
         }
 
-        canvas.save(Canvas.MATRIX_SAVE_FLAG);
+        saveCount = canvas.save();
         canvas.rotate(-heading, getWidth() * 0.5f, getHeight() * 0.5f);
         smoothCanvas.delegate = canvas;
         super.dispatchDraw(smoothCanvas);
-        canvas.restore();
+        if (saveCount != -1) {
+            canvas.restoreToCount(saveCount);
+            saveCount = -1;
+        }
     }
 
     @Override

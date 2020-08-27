@@ -1,6 +1,6 @@
 /*
  * Copyright 2013-2014 Ludwig M Brinckmann
- * Copyright 2015-2016 devemux86
+ * Copyright 2015-2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -15,23 +15,19 @@
  */
 package org.mapsforge.samples.android;
 
-import android.annotation.TargetApi;
-import android.os.Build;
+import android.graphics.BitmapFactory;
 import android.widget.Toast;
-
 import org.mapsforge.core.graphics.Color;
 import org.mapsforge.core.graphics.Paint;
 import org.mapsforge.core.graphics.Style;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.Point;
+import org.mapsforge.map.android.graphics.AndroidBitmap;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.layer.Layers;
-import org.mapsforge.map.layer.overlay.Circle;
-import org.mapsforge.map.layer.overlay.FixedPixelCircle;
-import org.mapsforge.map.layer.overlay.Marker;
-import org.mapsforge.map.layer.overlay.Polygon;
-import org.mapsforge.map.layer.overlay.Polyline;
+import org.mapsforge.map.layer.overlay.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -56,30 +52,38 @@ public class OverlayMapViewer extends DefaultTheme {
     protected LatLong latLong14 = new LatLong(52.516, 13.4245);
     protected LatLong latLong15 = new LatLong(52.526, 13.4345);
 
-
-    @SuppressWarnings("deprecation")
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     protected void addOverlayLayers(Layers layers) {
 
         Polyline polyline = new Polyline(Utils.createPaint(
-                AndroidGraphicFactory.INSTANCE.createColor(Color.BLUE), 8,
+                AndroidGraphicFactory.INSTANCE.createColor(Color.BLUE),
+                (int) (8 * mapView.getModel().displayModel.getScaleFactor()),
                 Style.STROKE), AndroidGraphicFactory.INSTANCE);
-        List<LatLong> latLongs = polyline.getLatLongs();
+        List<LatLong> latLongs = new ArrayList<>();
         latLongs.add(latLong1);
         latLongs.add(latLong2);
         latLongs.add(latLong3);
-
+        polyline.setPoints(latLongs);
 
         // this illustrates that bitmap shaders can be used on a path, but then any dash effect
         // will not be applied.
         Paint shaderPaint = Utils.createPaint(AndroidGraphicFactory.INSTANCE.createColor(Color.GREEN), 90, Style.STROKE);
-        shaderPaint.setBitmapShader(AndroidGraphicFactory.convertToBitmap(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? getDrawable(R.drawable.marker_green) : getResources().getDrawable(R.drawable.marker_green)));
+        shaderPaint.setBitmapShader(new AndroidBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.marker_green)));
 
-        Polyline polylineWithShader = new Polyline(shaderPaint, AndroidGraphicFactory.INSTANCE, true);
-        List<LatLong> latLongs2 = polylineWithShader.getLatLongs();
+        Polyline polylineWithShader = new Polyline(shaderPaint, AndroidGraphicFactory.INSTANCE, true) {
+            @Override
+            public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
+                if (contains(tapXY, mapView.getMapViewProjection())) {
+                    Toast.makeText(OverlayMapViewer.this, "Polyline tap\n" + tapLatLong, Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            }
+        };
+        List<LatLong> latLongs2 = new ArrayList<>();
         latLongs2.add(latLong7);
         latLongs2.add(latLong8);
         latLongs2.add(latLong9);
+        polylineWithShader.setPoints(latLongs2);
 
         Paint paintFill = Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.GREEN), 2,
@@ -87,53 +91,77 @@ public class OverlayMapViewer extends DefaultTheme {
         Paint paintStroke = Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.BLACK), 2,
                 Style.STROKE);
-        Polygon polygon = new Polygon(paintFill, paintStroke,
-                AndroidGraphicFactory.INSTANCE);
-        List<LatLong> latLongs3 = polygon.getLatLongs();
+        Polygon polygon = new Polygon(paintFill, paintStroke, AndroidGraphicFactory.INSTANCE) {
+            @Override
+            public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
+                if (contains(tapLatLong)) {
+                    Toast.makeText(OverlayMapViewer.this, "Polygon tap\n" + tapLatLong, Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            }
+        };
+        List<LatLong> latLongs3 = new ArrayList<>();
         latLongs3.add(latLong2);
         latLongs3.add(latLong3);
         latLongs3.add(latLong4);
         latLongs3.add(latLong5);
+        polygon.setPoints(latLongs3);
 
         // A polygon filled with a shader, where the shader is not aligned
         Paint paintFill2 = Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.GREEN), 2,
                 Style.FILL);
-        paintFill2.setBitmapShader(AndroidGraphicFactory.convertToBitmap(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? getDrawable(R.drawable.marker_green) : getResources().getDrawable(R.drawable.marker_green)));
+        paintFill2.setBitmapShader(new AndroidBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.marker_green)));
 
         Paint paintStroke2 = Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.BLACK), 2,
                 Style.STROKE);
         Polygon polygonWithShaderNonAligned = new Polygon(paintFill2, paintStroke2,
                 AndroidGraphicFactory.INSTANCE);
-        List<LatLong> latLongs4 = polygonWithShaderNonAligned.getLatLongs();
+        List<LatLong> latLongs4 = new ArrayList<>();
         latLongs4.add(latLong10);
         latLongs4.add(latLong11);
         latLongs4.add(latLong12);
         latLongs4.add(latLong10);
+        polygonWithShaderNonAligned.setPoints(latLongs4);
 
         Paint paintFill3 = Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.RED), 2,
                 Style.FILL);
-        paintFill3.setBitmapShader(AndroidGraphicFactory.convertToBitmap(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? getDrawable(R.drawable.marker_red) : getResources().getDrawable(R.drawable.marker_red)));
+        paintFill3.setBitmapShader(new AndroidBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.marker_red)));
 
         Paint paintStroke3 = Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.BLACK), 2,
                 Style.STROKE);
         Polygon polygonWithShaderAligned = new Polygon(paintFill3, paintStroke3,
                 AndroidGraphicFactory.INSTANCE, true);
-        List<LatLong> latLongs5 = polygonWithShaderAligned.getLatLongs();
+        List<LatLong> latLongs5 = new ArrayList<>();
         latLongs5.add(latLong13);
         latLongs5.add(latLong14);
         latLongs5.add(latLong15);
         latLongs5.add(latLong13);
+        polygonWithShaderAligned.setPoints(latLongs5);
 
         Marker marker1 = Utils.createTappableMarker(this,
                 R.drawable.marker_red, latLong1);
 
         Circle circle = new Circle(latLong3, 100, Utils.createPaint(
                 AndroidGraphicFactory.INSTANCE.createColor(Color.WHITE), 0,
-                Style.FILL), null);
+                Style.FILL), null) {
+            @Override
+            public boolean onTap(LatLong geoPoint, Point viewPosition,
+                                 Point tapPoint) {
+                if (this.contains(viewPosition, tapPoint, geoPoint.latitude,
+                        mapView.getModel().mapViewPosition.getZoomLevel())) {
+                    Toast.makeText(OverlayMapViewer.this,
+                            "The Circle was tapped " + geoPoint.toString(),
+                            Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            }
+        };
 
         FixedPixelCircle tappableCircle = new FixedPixelCircle(
                 latLong6,
@@ -141,20 +169,6 @@ public class OverlayMapViewer extends DefaultTheme {
                 Utils.createPaint(
                         AndroidGraphicFactory.INSTANCE.createColor(Color.GREEN),
                         0, Style.FILL), null) {
-            @Override
-            public boolean onLongPress(LatLong geoPoint, Point viewPosition,
-                                       Point tapPoint) {
-                if (this.contains(viewPosition, tapPoint)) {
-                    Toast.makeText(
-                            OverlayMapViewer.this,
-                            "The Circle was long pressed at "
-                                    + geoPoint.toString(), Toast.LENGTH_SHORT)
-                            .show();
-                    return true;
-                }
-                return false;
-            }
-
             @Override
             public boolean onTap(LatLong geoPoint, Point viewPosition,
                                  Point tapPoint) {

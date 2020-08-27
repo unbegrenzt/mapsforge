@@ -4,7 +4,7 @@ The Mapsforge Map-Writer is a plug-in for the OpenStreetMap Osmosis Tool to conv
 
 This documentation is intended for those who want to create map files for use with mapsforge.
 
-If you have any questions or problems, don't hesitate to ask our public [mapsforge-dev](https://groups.google.com/group/mapsforge-dev) mailing list for help. You can also report bugs and improvement requests via our [issue tracker](https://github.com/mapsforge/mapsforge/issues).
+If you have any questions or problems, don't hesitate to ask our public [forum](https://groups.google.com/group/mapsforge-dev) for help.
 
 ## Introduction
 
@@ -27,8 +27,10 @@ The mapsforge writer has not changed significantly from version 0.3 and files ge
 |`bbox`|bounding box definition as comma-separated list of coordinates in the form: minLat,minLon,maxLat,maxLon (be aware that osmosis does not allow **white space** in its command line parameters)|minLat, minLon, maxLat, maxLon in exactly this order as degrees|(blank)|
 |`map-start-position`|write a start position to the file which is used, when the file is first opened in the MapViewer|latitude, longitude in degrees|(blank)|
 |`map-start-zoom`|write a start zoom level to the file which is used, when the file is first opened in the MapViewer|zoom level as integer in [0, 21]|(blank)|
-|`preferred-languages`|If not specified, only the default language with no tag will be written to the file. If only one language is specified, it will be written if its tag is found, otherwise the default language will be written. If multiple comma separated languages are specified, the default language will be written, followed by the specified languages (if present and if different than the default).|language code as defined in ISO 639-1 or ISO 639-2 if an ISO 639-1 code doesn't exist|(blank)|
+|`preferred-languages`|<ul><li>If not specified, only the default language with no tag will be written to the file.</li><li>If only one language is specified, it will be written if its tag is found, otherwise the default language will be written.</li><li>If multiple comma separated languages are specified, the default language will be written, followed by the specified languages (if present and if different than the default). (**v4**)</li></ul>|language code as defined in ISO 639-1 or ISO 639-2 if an ISO 639-1 code doesn't exist|(blank)|
+|`tag-values`|enable usage of variable tag values, color strings and hex codes. (**v5**)|true/false|false|
 |`comment`|writes a comment to the file||(blank)|
+|`progress-logs`|enable progress logs|true/false|true|
 
 ### Advanced Options (only use when you know what you are doing)
 
@@ -37,7 +39,8 @@ The mapsforge writer has not changed significantly from version 0.3 and files ge
 |`tag-conf-file`|path to an XML file that customizes the definition which OSM-tags are recognized|path to an XML file, please read section 'Defining a Custom Tag Mapping via XML' carefully before using thsi parameter|(blank) internal default tag mapping is used|
 |`polygon-clipping`|use polygon clipping to reduce map file size (minimal performance overhead)|true/false|true|
 |`way-clipping`|use way clipping to reduce map file size (minimal performance overhead)|true/false|true|
-|`label-position`|compute label position for polygons that cover multiple tiles (minimal performance overhead)|true/false|false|
+|`label-position`|compute label/symbol position for polygons that cover multiple tiles|true/false|false|
+|`polylabel`|use in `label-position` calculation:<ul><li>Mapbox [polylabel](https://github.com/mapbox/polylabel) algorithm</li><li>JTS [interior point](https://locationtech.github.io/jts/javadoc/org/locationtech/jts/algorithm/InteriorPointArea.html) algorithm (minimal performance overhead)</li></ul>|<ul><li>true</li><li>false</li></ul>|false|
 |`simplification-factor`|simplifies ways and polygons with a topology preserving algorithm similar to the Douglas Peucker algorithm, using as the maximum distance difference value the given simplification factor (evaluated in pixels on max zoom level of a base zoom level); on base zoom levels higher than 12, no simplification is computed|positive real number|2.5|
 |`simplification-max-zoom`|The maximum base zoom level for which we apply a simplification algorithm to filter way points|positive integer|12|
 |`bbox-enlargement`|amount of meters used for enlarging bounding boxes in computations|positive integer|20|
@@ -63,7 +66,7 @@ zoom-interval-conf=5,0,7,10,8,11,12,12,13,14,14,21
 
 ## Plugin Installation
 
-- Download the release or snapshot writer plugin (**jar-with-dependencies**) from [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.mapsforge%22) or [Sonatype OSS Repository Hosting](https://oss.sonatype.org/content/repositories/snapshots/org/mapsforge/) and read the Osmosis [documentation](http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Plugin_Tasks) for how to install a plugin.
+- Download the release or snapshot writer plugin (**jar-with-dependencies**) from [Maven Central](https://search.maven.org/search?q=g:org.mapsforge) or [Sonatype OSS Repository Hosting](https://oss.sonatype.org/content/repositories/snapshots/org/mapsforge/) and read the Osmosis [documentation](http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Plugin_Tasks) for how to install a plugin.
 - You may want to increase the Java heap space that may be allocated for osmosis. You can do so by editing the script $OSMOSIS_HOME/bin/osmosis(.bat). Insert a line with 'JAVACMD_OPTIONS=-Xmx800m'. This sets the maximum available Java heap space to 800M. Of course you can set this parameter to a value which ever fits best for your purpose.
 - See http://wiki.openstreetmap.org/wiki/Osmosis/Installation for further information about Osmosis usage.
 
@@ -101,6 +104,15 @@ You need to be aware that this configuration only defines what data is to be inc
 
 ## Changelog
 
+### 0.10.0
+
+- Polygon label/symbol centroid
+
+### 0.9.0
+
+- Variable tag values (**v5**)
+- Osmosis 0.46 with protobuf 3
+
 ### 0.8.0
 
 - Multiple threads option (default 1)
@@ -118,7 +130,7 @@ You need to be aware that this configuration only defines what data is to be inc
 
 ### 0.6.0
 
-- Multilingual maps
+- Multilingual maps (**v4**)
 - Language improved parsing
 - Fix invalid number of way nodes
 

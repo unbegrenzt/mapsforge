@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 devemux86
+ * Copyright 2015-2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -14,75 +14,75 @@
  */
 package org.mapsforge.samples.android;
 
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.os.Environment;
+import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
-
-import org.mapsforge.core.graphics.Paint;
-import org.mapsforge.core.graphics.Style;
+import org.mapsforge.core.graphics.Bitmap;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.Point;
+import org.mapsforge.map.android.graphics.AndroidBitmap;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.layer.GroupLayer;
-import org.mapsforge.map.layer.Layer;
-import org.mapsforge.map.layer.Layers;
-import org.mapsforge.map.layer.overlay.Circle;
-import org.mapsforge.map.layer.overlay.FixedPixelCircle;
+import org.mapsforge.map.layer.overlay.Marker;
 import org.mapsforge.map.layer.renderer.TileRendererLayer;
 import org.mapsforge.poi.android.storage.AndroidPoiPersistenceManagerFactory;
-import org.mapsforge.poi.storage.ExactMatchPoiCategoryFilter;
-import org.mapsforge.poi.storage.PoiCategoryFilter;
-import org.mapsforge.poi.storage.PoiCategoryManager;
-import org.mapsforge.poi.storage.PoiPersistenceManager;
-import org.mapsforge.poi.storage.PointOfInterest;
+import org.mapsforge.poi.storage.*;
 
+import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 
 /**
  * POI search.<br/>
  * Long press on map to search inside visible bounding box.<br/>
- * Tap on POIs to show their name (in device's locale).
+ * Tap on POIs to show their name (in default locale).
  */
 public class PoiSearchViewer extends DefaultTheme {
-    private static final String POI_FILE = Environment.getExternalStorageDirectory() + "/germany.poi";
+
+    private static final String POI_FILE = "berlin.poi";
     private static final String POI_CATEGORY = "Restaurants";
 
-    private static final Paint CIRCLE = Utils.createPaint(AndroidGraphicFactory.INSTANCE.createColor(128, 0, 0, 255), 0, Style.FILL);
+    private GroupLayer groupLayer;
+    private PoiPersistenceManager persistenceManager;
 
     @Override
     protected void createLayers() {
-        TileRendererLayer tileRendererLayer = new TileRendererLayer(
-                this.tileCaches.get(0), getMapFile(),
-                this.mapView.getModel().mapViewPosition,
-                false, true, false, AndroidGraphicFactory.INSTANCE) {
+        TileRendererLayer tileRendererLayer = new TileRendererLayer(tileCaches.get(0), getMapFile(),
+                mapView.getModel().mapViewPosition, AndroidGraphicFactory.INSTANCE) {
             @Override
             public boolean onLongPress(LatLong tapLatLong, Point layerXY, Point tapXY) {
-                PoiSearchViewer.this.onLongPress();
+                // Clear overlays
+                if (groupLayer != null) {
+                    mapView.getLayerManager().getLayers().remove(groupLayer);
+                }
+                mapView.getLayerManager().redrawLayers();
+                // POI search
+                new PoiSearchTask(PoiSearchViewer.this, POI_CATEGORY).execute(mapView.getBoundingBox());
                 return true;
             }
         };
         tileRendererLayer.setXmlRenderTheme(getRenderTheme());
-        this.mapView.getLayerManager().getLayers().add(tileRendererLayer);
+        mapView.getLayerManager().getLayers().add(tileRendererLayer);
     }
 
-    private void onLongPress() {
-        // Clear overlays
-        Layers layers = this.mapView.getLayerManager().getLayers();
-        for (Layer layer : layers) {
-            if (layer instanceof GroupLayer) {
-                layers.remove(layer);
-            }
-        }
-        redrawLayers();
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-        // POI search
-        new PoiSearchTask(this, POI_CATEGORY).execute(this.mapView.getBoundingBox());
+        persistenceManager = AndroidPoiPersistenceManagerFactory.getPoiPersistenceManager(new File(getExternalFilesDir(null), POI_FILE).getAbsolutePath());
     }
 
-    private static class PoiSearchTask extends AsyncTask<BoundingBox, Void, Collection<PointOfInterest>> {
+    @Override
+    protected void onDestroy() {
+        persistenceManager.close();
+
+        super.onDestroy();
+    }
+
+    private class PoiSearchTask extends AsyncTask<BoundingBox, Void, Collection<PointOfInterest>> {
         private final WeakReference<PoiSearchViewer> weakActivity;
         private final String category;
 
@@ -93,19 +93,14 @@ public class PoiSearchViewer extends DefaultTheme {
 
         @Override
         protected Collection<PointOfInterest> doInBackground(BoundingBox... params) {
-            PoiPersistenceManager persistenceManager = null;
+            // Search POI
             try {
-                persistenceManager = AndroidPoiPersistenceManagerFactory.getPoiPersistenceManager(POI_FILE);
                 PoiCategoryManager categoryManager = persistenceManager.getCategoryManager();
                 PoiCategoryFilter categoryFilter = new ExactMatchPoiCategoryFilter();
-                categoryFilter.addCategory(categoryManager.getPoiCategoryByTitle(this.category));
+                categoryFilter.addCategory(categoryManager.getPoiCategoryByTitle(category));
                 return persistenceManager.findInRect(params[0], categoryFilter, null, Integer.MAX_VALUE);
             } catch (Throwable t) {
                 Log.e(SamplesApplication.TAG, t.getMessage(), t);
-            } finally {
-                if (persistenceManager != null) {
-                    persistenceManager.close();
-                }
             }
             return null;
         }
@@ -121,24 +116,35 @@ public class PoiSearchViewer extends DefaultTheme {
                 return;
             }
 
-            GroupLayer groupLayer = new GroupLayer();
+            // Overlay POI
+            groupLayer = new GroupLayer();
+            Bitmap bitmap = new AndroidBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.marker_green));
             for (final PointOfInterest pointOfInterest : pointOfInterests) {
-                final Circle circle = new FixedPixelCircle(pointOfInterest.getLatLong(), 16, CIRCLE, null) {
-                    @Override
-                    public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
-                        // GroupLayer does not have a position, layerXY is null
-                        Point circleXY = activity.mapView.getMapViewProjection().toPixels(getPosition());
-                        if (this.contains(circleXY, tapXY)) {
-                            Toast.makeText(activity, pointOfInterest.getName(), Toast.LENGTH_SHORT).show();
-                            return true;
-                        }
-                        return false;
-                    }
-                };
-                groupLayer.layers.add(circle);
+                Marker marker = new MarkerImpl(pointOfInterest.getLatLong(), bitmap, 0, -bitmap.getHeight() / 2, pointOfInterest);
+                groupLayer.layers.add(marker);
             }
-            activity.mapView.getLayerManager().getLayers().add(groupLayer);
-            activity.redrawLayers();
+            mapView.getLayerManager().getLayers().add(groupLayer);
+            mapView.getLayerManager().redrawLayers();
+        }
+    }
+
+    private class MarkerImpl extends Marker {
+        private final PointOfInterest pointOfInterest;
+
+        private MarkerImpl(LatLong latLong, Bitmap bitmap, int horizontalOffset, int verticalOffset, PointOfInterest pointOfInterest) {
+            super(latLong, bitmap, horizontalOffset, verticalOffset);
+            this.pointOfInterest = pointOfInterest;
+        }
+
+        @Override
+        public boolean onTap(LatLong tapLatLong, Point layerXY, Point tapXY) {
+            // GroupLayer does not have a position, layerXY is null
+            layerXY = mapView.getMapViewProjection().toPixels(getPosition());
+            if (contains(layerXY, tapXY)) {
+                Toast.makeText(PoiSearchViewer.this, pointOfInterest.getName(), Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
         }
     }
 }

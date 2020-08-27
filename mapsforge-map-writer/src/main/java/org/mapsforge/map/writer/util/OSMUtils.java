@@ -1,7 +1,8 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
- * Copyright 2015 devemux86
+ * Copyright 2015-2018 devemux86
  * Copyright 2015-2016 lincomatic
+ * Copyright 2017-2019 Gustl22
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -23,6 +24,7 @@ import org.openstreetmap.osmosis.core.domain.v0_6.Entity;
 import org.openstreetmap.osmosis.core.domain.v0_6.Tag;
 import org.openstreetmap.osmosis.core.domain.v0_6.Way;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,8 +35,6 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import gnu.trove.list.array.TShortArrayList;
-
 /**
  * OpenStreetMap related utility methods.
  */
@@ -43,7 +43,12 @@ public final class OSMUtils {
 
     private static final int MAX_ELEVATION = 9000;
 
+    private static final Pattern COLOR_PATTERN = Pattern.compile("#([A-Fa-f0-9]{6})");
+    //private static final String COLOR_EXTENDED_PATTERN = "(#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{8}|[A-Fa-f0-9]{3}))";
+    private static final Pattern DIGIT_PATTERN = Pattern.compile("-?\\d+(\\.\\d+)?");
     private static final Pattern NAME_LANGUAGE_PATTERN = Pattern.compile("(name)(:)([a-zA-Z]{1,3}(?:[-_][a-zA-Z0-9]{1,8})*)");
+
+    private static int nBytes, nFloats, nIntegers, nShorts, nStrings = 0;
 
     /**
      * Extracts known POI tags and returns their ids.
@@ -51,18 +56,19 @@ public final class OSMUtils {
      * @param entity the node
      * @return the ids of the identified tags
      */
-    public static short[] extractKnownPOITags(Entity entity) {
-        TShortArrayList currentTags = new TShortArrayList();
+    public static Map<Short, Object> extractKnownPOITags(Entity entity) {
+        Map<Short, Object> tagMap = new HashMap<>();
         OSMTagMapping mapping = OSMTagMapping.getInstance();
         if (entity.getTags() != null) {
             for (Tag tag : entity.getTags()) {
-                OSMTag wayTag = mapping.getPoiTag(tag.getKey(), tag.getValue());
-                if (wayTag != null) {
-                    currentTags.add(wayTag.getId());
+                OSMTag poiTag = mapping.getPoiTag(tag.getKey(), tag.getValue());
+                if (poiTag != null) {
+                    String wildcard = poiTag.getValue();
+                    tagMap.put(poiTag.getId(), getObjectFromWildcardAndValue(wildcard, tag.getValue()));
                 }
             }
         }
-        return currentTags.toArray();
+        return tagMap;
     }
 
     /**
@@ -71,18 +77,19 @@ public final class OSMUtils {
      * @param entity the way
      * @return the ids of the identified tags
      */
-    public static short[] extractKnownWayTags(Entity entity) {
-        TShortArrayList currentTags = new TShortArrayList();
+    public static Map<Short, Object> extractKnownWayTags(Entity entity) {
+        Map<Short, Object> tagMap = new HashMap<>();
         OSMTagMapping mapping = OSMTagMapping.getInstance();
         if (entity.getTags() != null) {
             for (Tag tag : entity.getTags()) {
                 OSMTag wayTag = mapping.getWayTag(tag.getKey(), tag.getValue());
                 if (wayTag != null) {
-                    currentTags.add(wayTag.getId());
+                    String wildcard = wayTag.getValue();
+                    tagMap.put(wayTag.getId(), getObjectFromWildcardAndValue(wildcard, tag.getValue()));
                 }
             }
         }
-        return currentTags.toArray();
+        return tagMap;
     }
 
     /**
@@ -198,15 +205,12 @@ public final class OSMUtils {
                                 + "\t entity-id: " + entity.getId() + "\tentity-type: " + entity.getType().name());
                     }
                 } else if ("ele".equals(key)) {
-                    String strElevation = tag.getValue();
-                    strElevation = strElevation.replaceAll("m", "");
-                    strElevation = strElevation.replaceAll(",", ".");
-                    try {
-                        double testElevation = Double.parseDouble(strElevation);
-                        if (testElevation < MAX_ELEVATION) {
-                            elevation = (short) testElevation;
+                    Double floatElevation = parseDoubleUnit(tag.getValue());
+                    if (floatElevation != null) {
+                        if (floatElevation < MAX_ELEVATION) {
+                            elevation = floatElevation.shortValue();
                         }
-                    } catch (NumberFormatException e) {
+                    } else {
                         LOGGER.finest("could not parse elevation information to double type: " + tag.getValue()
                                 + "\t entity-id: " + entity.getId() + "\tentity-type: " + entity.getType().name());
                     }
@@ -219,6 +223,123 @@ public final class OSMUtils {
         return new SpecialTagExtractionResult(name, ref, housenumber, layer, elevation, relationType);
     }
 
+
+    /**
+     * @param value string represented numerical value
+     * @return value as Byte
+     */
+    public static Byte getByteValue(String value) {
+        nBytes++;
+        return parseDoubleUnit(value).byteValue();
+    }
+
+    /**
+     * @param value string represented numerical value
+     * @return value as Float
+     */
+    public static Float getFloatValue(String value) {
+        nFloats++;
+        return parseDoubleUnit(value).floatValue();
+    }
+
+    /**
+     * @param value numerical or color-representing value as string
+     * @return corresponding Integer
+     */
+    public static Integer getIntegerValue(String value) {
+        nIntegers++;
+        Integer integer;
+        if (Character.isLetter(value.charAt(0))) {
+            integer = ColorsCSS.get(value);
+            if (integer != null) {
+                LOGGER.finest("ColorNam: #" + Integer.toHexString(integer));
+                return integer;
+            }
+        }
+        Matcher matcher = COLOR_PATTERN.matcher(value);
+        if (matcher.matches()) {
+            // TODO convert alpha colors too
+            try {
+                integer = Color.decode(value).getRGB();
+                LOGGER.finest("ColorHex: #" + Integer.toHexString(integer));
+            } catch (NumberFormatException e) {
+                integer = 0;
+                LOGGER.warning("Color conversion failed: " + value + "\n" + e.getMessage());
+            }
+        } else {
+            integer = OSMUtils.parseDoubleUnit(value).intValue();
+        }
+        return integer;
+    }
+
+    /**
+     * @param wildcard the type of value as wildcard
+     * @param value    the value as string
+     * @return an object that represents value
+     */
+    public static Object getObjectFromWildcardAndValue(String wildcard, String value) {
+        if (wildcard.length() == 2 && wildcard.charAt(0) == '%') {
+            Character format = wildcard.charAt(1);
+            if (format == 'b') {
+                return getByteValue(value);
+            } else if (format == 'i') {
+                return getIntegerValue(value);
+            } else if (format == 'f') {
+                return getFloatValue(value);
+            } else if (format == 'h') {
+                return getShortValue(value);
+            } else if (format == 's') {
+                return getStringValue(value);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param value string represented numerical value
+     * @return value as Short
+     */
+    public static Short getShortValue(String value) {
+        nShorts++;
+        return parseDoubleUnit(value).shortValue();
+    }
+
+    /**
+     * @param value string
+     * @return formatted value
+     */
+    public static String getStringValue(String value) {
+        // Do some string formation
+        nStrings++;
+        return value;
+    }
+
+    /**
+     * @param value string represented value
+     * @return a string represented primitive type
+     */
+    public static String getValueType(String key, String value) {
+        Double f = OSMUtils.parseDoubleUnit(value);
+        if (f != null) {
+            if (Math.round(f) == f) {
+                if (f.byteValue() == f) {
+                    return "%b";
+                } else if (f.shortValue() == f) {
+                    return "%h";
+                } else {
+                    return "%i";
+                }
+            }
+            return "%f";
+        }
+        if (key.contains("colour")) {
+            Matcher matcher = COLOR_PATTERN.matcher(value); // Encode color as integer
+            if (matcher.matches() || ColorsCSS.get(value) != null) {
+                return "%i";
+            }
+        }
+        return "%s";
+    }
 
     /**
      * Heuristic to determine from attributes if a way is likely to be an area.
@@ -270,6 +391,49 @@ public final class OSMUtils {
             }
         }
         return result;
+    }
+
+    public static String logValueTypeCount() {
+        return "Bytes:\t" + nBytes + "\nShorts:\t" + nShorts + "\nIntegers:\t" + nIntegers
+                + "\nFloats:\t" + nFloats + "\nStrings:\t" + nStrings;
+    }
+
+    /**
+     * @param value value as string
+     * @return parsed number if numerical, else null
+     */
+    public static Double parseDoubleUnit(String value) {
+        value = value.replaceAll("m", "").replaceAll(",", ".");
+        Matcher matcher = DIGIT_PATTERN.matcher(value);
+        Double res = null;
+        if (matcher.matches()) {
+            try {
+                res = Double.parseDouble(value);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return res;
+    }
+
+    /**
+     * @param tagMap the tag map
+     * @param isWay  indicates if tags belong to Way / Relation or to Node
+     * @return the tags as string
+     */
+    public static String tagsToString(Map<Short, Object> tagMap, boolean isWay) {
+        OSMTagMapping mapping = OSMTagMapping.getInstance();
+        StringBuilder sb = new StringBuilder("<id,k=v,v>[");
+        for (Map.Entry<Short, Object> tag : tagMap.entrySet()) {
+            sb.append("[");
+            sb.append(tag.getKey());
+            sb.append(", ");
+            sb.append(isWay ? mapping.getWayTag(tag.getKey()).tagKey() : mapping.getPoiTag(tag.getKey()).tagKey());
+            sb.append(", ");
+            sb.append(tag.getValue());
+            sb.append("],");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     private OSMUtils() {

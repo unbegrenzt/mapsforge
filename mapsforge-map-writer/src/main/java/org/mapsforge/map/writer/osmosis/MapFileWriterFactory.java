@@ -1,7 +1,8 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
- * Copyright 2015-2017 devemux86
+ * Copyright 2015-2018 devemux86
  * Copyright 2016 mikes222
+ * Copyright 2017-2018 Gustl22
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -37,12 +38,15 @@ class MapFileWriterFactory extends TaskManagerFactory {
     private static final String PARAM_MAP_START_ZOOM = "map-start-zoom";
     private static final String PARAM_OUTFILE = "file";
     private static final String PARAM_POLYGON_CLIPPING = "polygon-clipping";
+    private static final String PARAM_POLYLABEL = "polylabel";
     private static final String PARAM_PREFERRED_LANGUAGES = "preferred-languages";
+    private static final String PARAM_PROGRESS_LOGS = "progress-logs";
     // private static final String PARAM_WAYNODE_COMPRESSION = "waynode-compression";
     private static final String PARAM_SIMPLIFICATION_FACTOR = "simplification-factor";
     private static final String PARAM_SIMPLIFICATION_MAX_ZOOM = "simplification-max-zoom";
     private static final String PARAM_SKIP_INVALID_RELATIONS = "skip-invalid-relations";
     private static final String PARAM_TAG_MAPPING_FILE = "tag-conf-file";
+    private static final String PARAM_TAG_VALUES = "tag-values";
     private static final String PARAM_THREADS = "threads";
     private static final String PARAM_TYPE = "type";
     private static final String PARAM_WAY_CLIPPING = "way-clipping";
@@ -52,6 +56,7 @@ class MapFileWriterFactory extends TaskManagerFactory {
     protected TaskManager createTaskManagerImpl(TaskConfiguration taskConfig) {
         MapWriterConfiguration configuration = new MapWriterConfiguration();
         configuration.addOutputFile(getStringArgument(taskConfig, PARAM_OUTFILE, Constants.DEFAULT_PARAM_OUTFILE));
+        configuration.setTagValues(getBooleanArgument(taskConfig, PARAM_TAG_VALUES, false)); // must be set before loading tag mapping file
         configuration.loadTagMappingFile(getStringArgument(taskConfig, PARAM_TAG_MAPPING_FILE, null));
 
         configuration.addMapStartPosition(getStringArgument(taskConfig, PARAM_MAP_START_POSITION, null));
@@ -62,6 +67,8 @@ class MapFileWriterFactory extends TaskManagerFactory {
         configuration.setComment(getStringArgument(taskConfig, PARAM_COMMENT, null));
         configuration.setDebugStrings(getBooleanArgument(taskConfig, PARAM_DEBUG_INFO, false));
         configuration.setPolygonClipping(getBooleanArgument(taskConfig, PARAM_POLYGON_CLIPPING, true));
+        configuration.setPolylabel(getBooleanArgument(taskConfig, PARAM_POLYLABEL, false));
+        configuration.setProgressLogs(getBooleanArgument(taskConfig, PARAM_PROGRESS_LOGS, true));
         configuration.setWayClipping(getBooleanArgument(taskConfig, PARAM_WAY_CLIPPING, true));
         configuration.setLabelPosition(getBooleanArgument(taskConfig, PARAM_LABEL_POSITION, false));
         // boolean waynodeCompression = getBooleanArgument(taskConfig, PARAM_WAYNODE_COMPRESSION,

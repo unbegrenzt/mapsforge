@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2013-2014 Ludwig M Brinckmann
- * Copyright 2015-2016 devemux86
+ * Copyright 2015-2019 devemux86
  * Copyright 2015 Andreas Schildbach
  *
  * This program is free software: you can redistribute it and/or modify it under the
@@ -17,6 +17,7 @@
  */
 package org.mapsforge.samples.android;
 
+import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.layer.download.TileDownloadLayer;
@@ -31,36 +32,29 @@ import org.mapsforge.map.rendertheme.XmlRenderTheme;
 public class DownloadLayerViewer extends SamplesBaseActivity {
     protected TileDownloadLayer downloadLayer;
 
-    /**
-     * We do not need storage permission as we do not have a map file here.
-     */
-    @Override
-    protected void checkPermissionsAndCreateLayersAndControls() {
-        createLayers();
-        createControls();
-    }
-
     @Override
     protected void createLayers() {
+        OpenStreetMapMapnik tileSource = OpenStreetMapMapnik.INSTANCE;
+        tileSource.setUserAgent("mapsforge-samples-android");
         this.downloadLayer = new TileDownloadLayer(this.tileCaches.get(0),
-                this.mapView.getModel().mapViewPosition, OpenStreetMapMapnik.INSTANCE,
+                this.mapView.getModel().mapViewPosition, tileSource,
                 AndroidGraphicFactory.INSTANCE);
         mapView.getLayerManager().getLayers().add(this.downloadLayer);
 
-        mapView.setZoomLevelMin(OpenStreetMapMapnik.INSTANCE.getZoomLevelMin());
-        mapView.setZoomLevelMax(OpenStreetMapMapnik.INSTANCE.getZoomLevelMax());
+        mapView.setZoomLevelMin(tileSource.getZoomLevelMin());
+        mapView.setZoomLevelMax(tileSource.getZoomLevelMax());
     }
 
     @Override
     protected void createMapViews() {
         super.createMapViews();
         // we need to set a fixed size tile as the raster tiles come at a fixed size and not being blurry
-        this.mapView.getModel().displayModel.setFixedTileSize(256);
+        //this.mapView.getModel().displayModel.setFixedTileSize(256);
     }
 
     @Override
     protected MapPosition getInitialPosition() {
-        return getDefaultInitialPosition();
+        return new MapPosition(new LatLong(0, 0), (byte) 2);
     }
 
     @Override

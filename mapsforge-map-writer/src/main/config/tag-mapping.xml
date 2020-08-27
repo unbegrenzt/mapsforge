@@ -11,6 +11,7 @@
         <osm-tag key="highway" value="mini_roundabout" zoom-appear="17" />
         <osm-tag key="highway" value="traffic_signals" zoom-appear="17" />
         <osm-tag key="highway" value="turning_circle" zoom-appear="15" />
+        <osm-tag key="highway" value="street_lamp" zoom-appear="17" />
     </pois>
 
     <!-- PUBLIC AMENITIES -->
@@ -54,9 +55,12 @@
         <osm-tag key="leisure" value="playground" zoom-appear="17" />
         <osm-tag key="leisure" value="slipway" zoom-appear="17" />
 
+        <osm-tag key="religion" renderable="false" value="buddhist" />
         <osm-tag key="religion" renderable="false" value="christian" />
+        <osm-tag key="religion" renderable="false" value="hindu" />
         <osm-tag key="religion" renderable="false" value="jewish" />
         <osm-tag key="religion" renderable="false" value="muslim" />
+        <osm-tag key="religion" renderable="false" value="shinto" />
 
         <osm-tag key="shop" value="bakery" zoom-appear="17" />
         <osm-tag key="shop" value="bicycle" zoom-appear="17" />
@@ -85,6 +89,7 @@
     <!-- TOURISM TAGS -->
     <pois>
         <osm-tag key="tourism" value="alpine_hut" zoom-appear="15" />
+        <osm-tag key="tourism" value="artwork" zoom-appear="17" />
         <osm-tag key="tourism" value="attraction" zoom-appear="17" />
         <osm-tag key="tourism" value="hostel" zoom-appear="17" />
         <osm-tag key="tourism" value="hotel" zoom-appear="17" />
@@ -110,9 +115,14 @@
 
     <!-- NATURAL TAGS -->
     <pois>
+        <osm-tag key="leaf_type" renderable="false" value="broadleaved" />
+        <osm-tag key="leaf_type" renderable="false" value="needleleaved" />
+        <osm-tag key="leaf_type" renderable="false" value="leafless" />
+
         <osm-tag key="natural" value="cave_entrance" zoom-appear="14" />
         <osm-tag key="natural" value="peak" zoom-appear="12" />
         <osm-tag key="natural" value="spring" zoom-appear="17" />
+        <osm-tag key="natural" value="tree" zoom-appear="17" />
         <osm-tag key="natural" value="volcano" zoom-appear="12" />
     </pois>
 
@@ -177,6 +187,10 @@
 
     <!-- NATURAL / WATERWAY TAGS -->
     <ways>
+        <osm-tag key="leaf_type" renderable="false" value="broadleaved" />
+        <osm-tag key="leaf_type" renderable="false" value="needleleaved" />
+        <osm-tag key="leaf_type" renderable="false" value="leafless" />
+
         <osm-tag key="lock" value="yes" zoom-appear="14" />
 
         <!-- mapsforge artificial tags for land/sea areas, do not remove -->
@@ -280,11 +294,19 @@
         <osm-tag key="amenity" value="grave_yard" zoom-appear="14" />
         <osm-tag key="amenity" value="hospital" zoom-appear="13" />
         <osm-tag key="amenity" value="parking" zoom-appear="14" />
+        <osm-tag key="amenity" value="place_of_worship" zoom-appear="14" />
         <osm-tag key="amenity" value="school" zoom-appear="14" />
         <osm-tag key="amenity" value="swimming_pool" zoom-appear="14" />
         <osm-tag key="amenity" value="theatre" zoom-appear="14" />
         <osm-tag key="amenity" value="toilets" zoom-appear="17" />
         <osm-tag key="amenity" value="university" zoom-appear="13" />
+
+        <osm-tag key="religion" renderable="false" value="buddhist" />
+        <osm-tag key="religion" renderable="false" value="christian" />
+        <osm-tag key="religion" renderable="false" value="hindu" />
+        <osm-tag key="religion" renderable="false" value="jewish" />
+        <osm-tag key="religion" renderable="false" value="muslim" />
+        <osm-tag key="religion" renderable="false" value="shinto" />
 
         <osm-tag key="tourism" value="attraction" zoom-appear="14" />
         <osm-tag key="tourism" value="hostel" zoom-appear="15" />
@@ -368,6 +390,141 @@
         <osm-tag key="building" label-position="true" value="yes" zoom-appear="15" />
     </ways>
 
+    <!-- Building extrusions -->
+    <ways>
+        <osm-tag key="building:part" value="arch" zoom-appear="17" />
+        <osm-tag key="building:part" value="balcony" zoom-appear="17" />
+        <osm-tag key="building:part" value="base" zoom-appear="17" />
+        <osm-tag key="building:part" value="column" zoom-appear="17" />
+        <osm-tag key="building:part" value="elevator" zoom-appear="17" />
+        <osm-tag key="building:part" value="entrance" zoom-appear="17" />
+        <osm-tag key="building:part" value="floor" zoom-appear="17" />
+        <osm-tag key="building:part" value="hall" zoom-appear="17" />
+        <osm-tag key="building:part" value="main" zoom-appear="17" />
+        <osm-tag key="building:part" value="passageway" zoom-appear="17" />
+        <osm-tag key="building:part" value="pillar" zoom-appear="17" />
+        <osm-tag key="building:part" value="porch" zoom-appear="17" />
+        <osm-tag key="building:part" value="ramp" zoom-appear="17" />
+        <osm-tag key="building:part" value="roof" zoom-appear="17" />
+        <osm-tag key="building:part" value="room" zoom-appear="17" />
+        <osm-tag key="building:part" value="steps" zoom-appear="17" />
+        <osm-tag key="building:part" value="stilobate" zoom-appear="17" />
+        <osm-tag key="building:part" value="tier" zoom-appear="17" />
+        <osm-tag key="building:part" value="tower" zoom-appear="17" />
+        <osm-tag key="building:part" value="verticalpassage" zoom-appear="17" />
+        <osm-tag key="building:part" value="wall" zoom-appear="17" />
+        <osm-tag key="building:part" value="window" zoom-appear="17" />
+        <osm-tag key="building:part" value="yes" zoom-appear="17" />
+
+        <osm-tag key="height" renderable="false" value="%f" />
+        <osm-tag key="min_height" renderable="false" value="%f" />
+        <osm-tag key="building:levels" renderable="false" value="%f" />
+        <osm-tag key="building:min_level" renderable="false" value="%f" />
+    </ways>
+
+    <!-- S3DB tags -->
+    <ways>
+        <osm-tag key="roof:shape" renderable="false" value="flat" />
+        <osm-tag key="roof:shape" renderable="false" value="skillion" />
+        <osm-tag key="roof:shape" renderable="false" value="gabled" />
+        <osm-tag key="roof:shape" renderable="false" value="half-hipped" />
+        <osm-tag key="roof:shape" renderable="false" value="hipped" />
+        <osm-tag key="roof:shape" renderable="false" value="pyramidal" />
+        <osm-tag key="roof:shape" renderable="false" value="gambrel" />
+        <osm-tag key="roof:shape" renderable="false" value="mansard" />
+        <osm-tag key="roof:shape" renderable="false" value="dome" />
+        <osm-tag key="roof:shape" renderable="false" value="onion" />
+        <osm-tag key="roof:shape" renderable="false" value="round" />
+        <osm-tag key="roof:shape" renderable="false" value="saltbox" />
+
+        <osm-tag key="roof:orientation" renderable="false" value="along" />
+        <osm-tag key="roof:orientation" renderable="false" value="across" />
+        <osm-tag key="roof:height" renderable="false" value="%f" />
+        <osm-tag key="roof:angle" renderable="false" value="%f" />
+        <osm-tag key="roof:levels" renderable="false" value="%f" />
+
+        <osm-tag key="roof:direction" renderable="false" value="%f" />
+        <osm-tag equivalent-values="N,n,north" key="roof:direction" renderable="false" value="0" />
+        <osm-tag equivalent-values="E,e,east" key="roof:direction" renderable="false" value="90" />
+        <osm-tag equivalent-values="S,s,south" key="roof:direction" renderable="false"
+            value="180" />
+        <osm-tag equivalent-values="W,w,west" key="roof:direction" renderable="false" value="270" />
+
+        <osm-tag equivalent-values="NE,ne" key="roof:direction" renderable="false" value="45" />
+        <osm-tag equivalent-values="SE,se" key="roof:direction" renderable="false" value="135" />
+        <osm-tag equivalent-values="SW,sw" key="roof:direction" renderable="false" value="225" />
+        <osm-tag equivalent-values="NW,nw" key="roof:direction" renderable="false" value="315" />
+
+        <osm-tag equivalent-values="NNE,nne" key="roof:direction" renderable="false" value="22" />
+        <osm-tag equivalent-values="ENE,ene" key="roof:direction" renderable="false" value="67" />
+        <osm-tag equivalent-values="ESE,ese" key="roof:direction" renderable="false" value="112" />
+        <osm-tag equivalent-values="SSE,sse" key="roof:direction" renderable="false" value="157" />
+        <osm-tag equivalent-values="SSW,ssw" key="roof:direction" renderable="false" value="202" />
+        <osm-tag equivalent-values="WSW,wsw" key="roof:direction" renderable="false" value="247" />
+        <osm-tag equivalent-values="WNW,wnw" key="roof:direction" renderable="false" value="292" />
+        <osm-tag equivalent-values="NNW,nnw" key="roof:direction" renderable="false" value="337" />
+
+        <osm-tag key="building:colour" renderable="false" value="black" />
+        <osm-tag key="building:colour" renderable="false" value="blue" />
+        <osm-tag key="building:colour" renderable="false" value="brown" />
+        <osm-tag key="building:colour" renderable="false" value="green" />
+        <osm-tag equivalent-values="gray" key="building:colour" renderable="false" value="grey" />
+        <osm-tag key="building:colour" renderable="false" value="red" />
+        <osm-tag key="building:colour" renderable="false" value="white" />
+        <osm-tag key="building:colour" renderable="false" value="yellow" />
+        <osm-tag key="building:colour" renderable="false" value="%f" />
+        <!-- Detect unmatched tags -->
+        <!--<osm-tag key="building:colour" renderable="false" value="%s" />-->
+        <osm-tag key="roof:colour" renderable="false" value="black" />
+        <osm-tag key="roof:colour" renderable="false" value="blue" />
+        <osm-tag key="roof:colour" renderable="false" value="brown" />
+        <osm-tag key="roof:colour" renderable="false" value="green" />
+        <osm-tag equivalent-values="gray" key="roof:colour" renderable="false" value="grey" />
+        <osm-tag key="roof:colour" renderable="false" value="red" />
+        <osm-tag key="roof:colour" renderable="false" value="white" />
+        <osm-tag key="roof:colour" renderable="false" value="yellow" />
+        <osm-tag key="roof:colour" renderable="false" value="%f" />
+        <!-- Detect unmatched tags -->
+        <!--<osm-tag key="roof:colour" renderable="false" value="%s" />-->
+        <osm-tag key="building:material" renderable="false" value="plaster" />
+        <osm-tag key="building:material" renderable="false" value="brick" />
+        <osm-tag key="building:material" renderable="false" value="wood" />
+        <osm-tag key="building:material" renderable="false" value="concrete" />
+        <osm-tag key="building:material" renderable="false" value="glass" />
+        <osm-tag key="building:material" renderable="false" value="mirror" />
+        <osm-tag key="building:material" renderable="false" value="stone" />
+        <osm-tag key="building:material" renderable="false" value="sandstone" />
+        <osm-tag key="building:material" renderable="false" value="steel" />
+        <osm-tag key="building:material" renderable="false" value="metal" />
+        <!--<osm-tag key="building:material" renderable="false" value="limestone" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="sand_cement_blocks" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="metal_plates" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="mdf" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="timber_framing" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="plastic" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="vinyl" />-->
+        <!--<osm-tag key="building:material" renderable="false" value="tiles" />-->
+        <!-- Detect unmatched tags -->
+        <!--<osm-tag key="building:material" renderable="false" value="%s" />-->
+        <osm-tag key="roof:material" renderable="false" value="acrylic_glass" />
+        <osm-tag key="roof:material" renderable="false" value="concrete" />
+        <osm-tag key="roof:material" renderable="false" value="copper" />
+        <osm-tag key="roof:material" renderable="false" value="eternit" />
+        <osm-tag key="roof:material" renderable="false" value="plastic" />
+        <osm-tag key="roof:material" renderable="false" value="asphalt " />
+        <osm-tag key="roof:material" renderable="false" value="glass" />
+        <osm-tag key="roof:material" renderable="false" value="grass" />
+        <osm-tag key="roof:material" renderable="false" value="gravel" />
+        <osm-tag key="roof:material" renderable="false" value="metal" />
+        <osm-tag key="roof:material" renderable="false" value="plants" />
+        <osm-tag key="roof:material" renderable="false" value="roof_tiles" />
+        <osm-tag key="roof:material" renderable="false" value="slate" />
+        <osm-tag key="roof:material" renderable="false" value="stone" />
+        <osm-tag key="roof:material" renderable="false" value="tar_paper" />
+        <osm-tag key="roof:material" renderable="false" value="thatch" />
+        <osm-tag key="roof:material" renderable="false" value="wood" />
+    </ways>
+
     <!-- ADMINISTRATIVE BOUNDARIES -->
     <ways>
 
@@ -444,6 +601,8 @@
 
     <!-- NOT TO RENDER -->
     <ways>
+        <osm-tag key="id" renderable="false" value="%f" />
+
         <osm-tag key="access" renderable="false" value="destination" />
         <osm-tag key="access" renderable="false" value="private" />
 

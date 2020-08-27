@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2014 Ludwig M Brinckmann
- * Copyright 2014-2016 devemux86
+ * Copyright 2014-2019 devemux86
  * Copyright 2014 Erik Duisters
  * Copyright 2014 Christian Pesch
  *
@@ -18,17 +18,10 @@
  */
 package org.mapsforge.map.scalebar;
 
-import org.mapsforge.core.graphics.Canvas;
-import org.mapsforge.core.graphics.Cap;
-import org.mapsforge.core.graphics.Color;
-import org.mapsforge.core.graphics.FontFamily;
-import org.mapsforge.core.graphics.FontStyle;
-import org.mapsforge.core.graphics.GraphicFactory;
-import org.mapsforge.core.graphics.Paint;
-import org.mapsforge.core.graphics.Style;
+import org.mapsforge.core.graphics.*;
 import org.mapsforge.map.model.DisplayModel;
+import org.mapsforge.map.model.IMapViewPosition;
 import org.mapsforge.map.model.MapViewDimension;
-import org.mapsforge.map.model.MapViewPosition;
 
 /**
  * Displays the default MapScaleBar.
@@ -45,7 +38,6 @@ public class DefaultMapScaleBar extends MapScaleBar {
 
     public enum ScaleBarMode {BOTH, SINGLE}
 
-    private final float scale;
     private ScaleBarMode scaleBarMode;
     private DistanceUnitAdapter secondaryDistanceUnitAdapter;
 
@@ -54,19 +46,18 @@ public class DefaultMapScaleBar extends MapScaleBar {
     private final Paint paintScaleText;
     private final Paint paintScaleTextStroke;
 
-    public DefaultMapScaleBar(MapViewPosition mapViewPosition, MapViewDimension mapViewDimension,
+    public DefaultMapScaleBar(IMapViewPosition mapViewPosition, MapViewDimension mapViewDimension,
                               GraphicFactory graphicFactory, DisplayModel displayModel) {
         this(mapViewPosition, mapViewDimension, graphicFactory, displayModel, displayModel.getScaleFactor());
     }
 
-    public DefaultMapScaleBar(MapViewPosition mapViewPosition, MapViewDimension mapViewDimension,
+    public DefaultMapScaleBar(IMapViewPosition mapViewPosition, MapViewDimension mapViewDimension,
                               GraphicFactory graphicFactory, DisplayModel displayModel, float scale) {
-        super(mapViewPosition, mapViewDimension, displayModel, graphicFactory, (int) (BITMAP_WIDTH * scale), (int) (BITMAP_HEIGHT * scale));
+        super(mapViewPosition, mapViewDimension, displayModel, graphicFactory, (int) (BITMAP_WIDTH * scale), (int) (BITMAP_HEIGHT * scale), scale);
 
         setMarginHorizontal((int) (DEFAULT_HORIZONTAL_MARGIN * scale));
         setMarginVertical((int) (DEFAULT_VERTICAL_MARGIN * scale));
 
-        this.scale = scale;
         this.scaleBarMode = ScaleBarMode.BOTH;
         this.secondaryDistanceUnitAdapter = ImperialUnitAdapter.INSTANCE;
 

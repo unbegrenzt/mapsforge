@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2013-2015 Ludwig M Brinckmann
- * Copyright 2016-2017 devemux86
+ * Copyright 2016-2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -16,16 +16,11 @@
  */
 package org.mapsforge.samples.android;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Environment;
-import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
-import org.mapsforge.map.android.util.AndroidSupportUtil;
+import androidx.fragment.app.Fragment;
 import org.mapsforge.map.android.util.AndroidUtil;
 import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.layer.cache.TileCache;
@@ -84,7 +79,6 @@ public class ItemDetailFragment extends Fragment {
 
         if (this.dummyItem != null) {
             this.mapView = (MapView) rootView.findViewById(R.id.mapView);
-            this.mapView.setClickable(true);
             this.mapView.getMapScaleBar().setVisible(true);
 
             createLayers();
@@ -104,37 +98,15 @@ public class ItemDetailFragment extends Fragment {
 
     private final byte PERMISSIONS_REQUEST_READ_STORAGE = 122;
 
-    /**
-     * Note that this is the Fragment method, not one from the compatibility lib
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        switch (requestCode) {
-            case PERMISSIONS_REQUEST_READ_STORAGE: {
-                if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    // permission is not granted, the app should do something meaningful here.
-                    return;
-                }
-                createLayers();
-            }
-        }
-    }
-
     protected void createLayers() {
-        if (AndroidSupportUtil.runtimePermissionRequiredForReadExternalStorage(this.getActivity(), getMapFileDirectory())) {
-            // note that this the Fragment method, not compat lib
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_READ_STORAGE);
-        } else {
-            TileCache tileCache = AndroidUtil.createTileCache(this.getActivity(), "fragments",
-                    this.mapView.getModel().displayModel.getTileSize(), 1.0f, 1.5);
-            this.mapView.getLayerManager().getLayers().add(AndroidUtil.createTileRendererLayer(
-                    tileCache, this.mapView.getModel().mapViewPosition, getMapFile(),
-                    InternalRenderTheme.DEFAULT));
+        TileCache tileCache = AndroidUtil.createTileCache(this.getActivity(), "fragments",
+                this.mapView.getModel().displayModel.getTileSize(), 1.0f, 1.5);
+        this.mapView.getLayerManager().getLayers().add(AndroidUtil.createTileRendererLayer(
+                tileCache, this.mapView.getModel().mapViewPosition, getMapFile(),
+                InternalRenderTheme.DEFAULT));
 
-            this.mapView.setCenter(this.dummyItem.location);
-            this.mapView.setZoomLevel((byte) 16);
-        }
-
+        this.mapView.setCenter(this.dummyItem.location);
+        this.mapView.setZoomLevel((byte) 16);
     }
 
     protected MapFile getMapFile() {
@@ -143,10 +115,10 @@ public class ItemDetailFragment extends Fragment {
     }
 
     protected File getMapFileDirectory() {
-        return Environment.getExternalStorageDirectory();
+        return getContext().getExternalFilesDir(null);
     }
 
     protected String getMapFileName() {
-        return "germany.map";
+        return "berlin.map";
     }
 }

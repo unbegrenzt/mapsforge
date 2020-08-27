@@ -1,4 +1,0 @@
-dependencies {
-    compile project(":mapsforge-map-android")
-    provided 'com.android.support:support-v4:26.0.0'
-}

@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2013-2014 Ludwig M Brinckmann
- * Copyright 2014-2016 devemux86
+ * Copyright 2014-2019 devemux86
  * Copyright 2017 usrusr
  *
  * This program is free software: you can redistribute it and/or modify it under the
@@ -19,8 +19,6 @@ package org.mapsforge.map.android.util;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.os.Environment;
-
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
@@ -28,7 +26,7 @@ import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.datastore.MapDataStore;
 import org.mapsforge.map.layer.cache.TileCache;
 import org.mapsforge.map.layer.hills.HillsRenderConfig;
-import org.mapsforge.map.model.MapViewPosition;
+import org.mapsforge.map.model.IMapViewPosition;
 import org.mapsforge.map.model.common.PreferencesFacade;
 import org.mapsforge.map.reader.MapFile;
 import org.mapsforge.map.rendertheme.XmlRenderTheme;
@@ -133,7 +131,6 @@ public abstract class MapViewerTemplate extends Activity {
     protected void createMapViews() {
         mapView = getMapView();
         mapView.getModel().init(this.preferencesFacade);
-        mapView.setClickable(true);
         mapView.getMapScaleBar().setVisible(true);
         mapView.setBuiltInZoomControls(hasZoomControls());
         mapView.getMapZoomControls().setAutoHide(isZoomControlsAutoHide());
@@ -185,12 +182,12 @@ public abstract class MapViewerTemplate extends Activity {
 
     /**
      * Provides the directory of the map file, by default the Android external storage
-     * directory (e.g. sdcard).
+     * directory: /sdcard/Android/data/org.mapsforge.samples.android/files/
      *
      * @return
      */
     protected File getMapFileDirectory() {
-        return Environment.getExternalStorageDirectory();
+        return getExternalFilesDir(null);
     }
 
     /**
@@ -249,7 +246,7 @@ public abstract class MapViewerTemplate extends Activity {
      * @param mvp the map view position to be set
      * @return the mapviewposition set
      */
-    protected MapViewPosition initializePosition(MapViewPosition mvp) {
+    protected IMapViewPosition initializePosition(IMapViewPosition mvp) {
         LatLong center = mvp.getCenter();
 
         if (center.equals(new LatLong(0, 0))) {
@@ -261,9 +258,7 @@ public abstract class MapViewerTemplate extends Activity {
     }
 
     /**
-     * Hook to check for Android Runtime Permissions. There is no check here, as
-     * see the @MapViewerTemplateRuntimePermissions for an implementation that works with
-     * Runtime Permissions.
+     * Hook to check for Android Runtime Permissions.
      */
     protected void checkPermissionsAndCreateLayersAndControls() {
         createLayers();

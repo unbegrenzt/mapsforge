@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2014 Ludwig M Brinckmann
- * Copyright 2014-2017 devemux86
+ * Copyright 2014-2018 devemux86
  * Copyright 2017 usrusr
  * Copyright 2017 MarcelHeckel
  *
@@ -51,7 +51,7 @@ import java.util.logging.Logger;
  */
 public final class RenderThemeHandler {
 
-    private static enum Element {
+    private enum Element {
         RENDER_THEME, RENDERING_INSTRUCTION, RULE, RENDERING_STYLE;
     }
 
@@ -284,16 +284,20 @@ public final class RenderThemeHandler {
                 }
             } else if ("hillshading".equals(qName)) {
                 checkState(qName, Element.RULE);
+                String category = null;
                 byte minZoom = 5;
                 byte maxZoom = 17;
                 byte layer = 5;
                 short magnitude = 64;
+                boolean always = false;
 
                 for (int i = 0; i < pullParser.getAttributeCount(); ++i) {
                     String name = pullParser.getAttributeName(i);
                     String value = pullParser.getAttributeValue(i);
 
-                    if ("zoom-min".equals(name)) {
+                    if ("cat".equals(name)) {
+                        category = value;
+                    } else if ("zoom-min".equals(name)) {
                         minZoom = XmlUtils.parseNonNegativeByte("zoom-min", value);
                     } else if ("zoom-max".equals(name)) {
                         maxZoom = XmlUtils.parseNonNegativeByte("zoom-max", value);
@@ -301,15 +305,20 @@ public final class RenderThemeHandler {
                         magnitude = (short) XmlUtils.parseNonNegativeInteger("magnitude", value);
                         if (magnitude > 255)
                             throw new XmlPullParserException("Attribute 'magnitude' must not be > 255");
+                    } else if ("always".equals(name)) {
+                        always = Boolean.valueOf(value);
                     } else if ("layer".equals(name)) {
                         layer = XmlUtils.parseNonNegativeByte("layer", value);
                     }
                 }
 
                 int hillShadingLevel = this.level++;
-                Hillshading hillshading = new Hillshading(minZoom, maxZoom, magnitude, layer, hillShadingLevel, this.graphicFactory);
+                Hillshading hillshading = new Hillshading(minZoom, maxZoom, magnitude, layer, always, hillShadingLevel, this.graphicFactory);
 
-                renderTheme.addHillShadings(hillshading);
+                if (this.categories == null || category == null
+                        || this.categories.contains(category)) {
+                    this.renderTheme.addHillShadings(hillshading);
+                }
             } else {
                 throw new XmlPullParserException("unknown element: " + qName);
             }

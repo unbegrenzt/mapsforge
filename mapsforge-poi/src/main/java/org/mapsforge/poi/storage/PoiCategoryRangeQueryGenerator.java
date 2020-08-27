@@ -1,7 +1,8 @@
 /*
  * Copyright 2010, 2011 mapsforge.org
  * Copyright 2010, 2011 Karsten Groll
- * Copyright 2015 devemux86
+ * Copyright 2015-2017 devemux86
+ * Copyright 2017 Gustl22
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -32,22 +33,37 @@ public final class PoiCategoryRangeQueryGenerator {
      * Gets the SQL query that looks up POI entries.
      *
      * @param filter  The filter object for determining all wanted categories.
-     * @param pattern the pattern to search in points of interest names (may be null).
+     * @param count   Count of patterns to search in points of interest names (may be 0).
+     * @param version POI specification version.
      * @return The SQL query.
      */
-    public static String getSQLSelectString(PoiCategoryFilter filter, String pattern) {
-        return DbConstants.FIND_IN_BOX_STATEMENT + getSQLWhereClauseString(filter)
-                + (pattern != null ? DbConstants.FIND_BY_DATA_CLAUSE : "")
-                + " LIMIT ?;";
+    public static String getSQLSelectString(PoiCategoryFilter filter, int count, int version) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(DbConstants.FIND_IN_BOX_CLAUSE_SELECT);
+        if (version < 2) {
+            sb.append(DbConstants.JOIN_DATA_CLAUSE);
+        } else {
+            sb.append(DbConstants.JOIN_CATEGORY_CLAUSE);
+            if (count > 0) {
+                sb.append(DbConstants.JOIN_DATA_CLAUSE);
+            }
+        }
+        sb.append(DbConstants.FIND_IN_BOX_CLAUSE_WHERE);
+        sb.append(getSQLWhereClauseString(filter, version));
+        for (int i = 0; i < count; i++) {
+            sb.append(DbConstants.FIND_BY_DATA_CLAUSE);
+        }
+        return (sb.append(" LIMIT ?;").toString());
     }
 
     /**
      * Gets the WHERE clause for the SQL query that looks up POI entries.
      *
-     * @param filter The filter object for determining all wanted categories.
+     * @param filter  The filter object for determining all wanted categories.
+     * @param version POI specification version.
      * @return The WHERE clause.
      */
-    private static String getSQLWhereClauseString(PoiCategoryFilter filter) {
+    private static String getSQLWhereClauseString(PoiCategoryFilter filter, int version) {
         Collection<PoiCategory> superCategories = filter.getAcceptedSuperCategories();
 
         if (superCategories.isEmpty()) {
@@ -65,7 +81,11 @@ public final class PoiCategoryRangeQueryGenerator {
             // Don't forget the super category itself in the search!
             categories.add(superCat);
 
-            sb.append("poi_data.category IN (");
+            if (version < 2) {
+                sb.append(DbConstants.FIND_IN_BOX_CLAUSE_WHERE_CATEGORY_IN_V1);
+            } else {
+                sb.append(DbConstants.FIND_IN_BOX_CLAUSE_WHERE_CATEGORY_IN);
+            }
             // for each category
             for (Iterator<PoiCategory> catIter = categories.iterator(); catIter.hasNext(); ) {
                 PoiCategory cat = catIter.next();

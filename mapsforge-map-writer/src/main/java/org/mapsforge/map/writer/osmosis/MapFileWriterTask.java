@@ -1,6 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
- * Copyright 2015 devemux86
+ * Copyright 2015-2017 devemux86
+ * Copyright 2017-2018 Gustl22
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -43,11 +44,6 @@ import java.util.logging.Logger;
 public class MapFileWriterTask implements Sink {
     private static final Logger LOGGER = Logger.getLogger(MapFileWriterTask.class.getName());
 
-    // Accounting
-    private int amountOfNodesProcessed = 0;
-    private int amountOfRelationsProcessed = 0;
-    private int amountOfWaysProcessed = 0;
-
     private final MapWriterConfiguration configuration;
     private TileBasedDataProcessor tileBasedGeoObjectStore;
 
@@ -59,10 +55,18 @@ public class MapFileWriterTask implements Sink {
             properties.load(MapFileWriterTask.class.getClassLoader().getResourceAsStream("mapsforge-map.properties"));
             configuration.setWriterVersion(Constants.CREATOR_NAME + "-"
                     + properties.getProperty(Constants.PROPERTY_NAME_WRITER_VERSION));
-            // If multilingual map then set newer map file version
-            boolean multilingual = configuration.getPreferredLanguages() != null && configuration.getPreferredLanguages().size() > 1;
-            configuration.setFileSpecificationVersion(Integer.parseInt(properties.getProperty(
-                    multilingual ? Constants.PROPERTY_NAME_FILE_SPECIFICATION_VERSION_MAX : Constants.PROPERTY_NAME_FILE_SPECIFICATION_VERSION_MIN)));
+            // If multilingual map or tag values then set newer map file versions
+            int version = Integer.parseInt(properties.getProperty(Constants.PROPERTY_NAME_FILE_SPECIFICATION_VERSION_MIN));
+            if (configuration.isTagValues()) {
+                version = (version > 5) ? version : 5;
+            }
+            if (configuration.getPreferredLanguages() != null && configuration.getPreferredLanguages().size() > 1) {
+                version = (version > 4) ? version : 4;
+            }
+            if (version > Integer.parseInt(properties.getProperty(Constants.PROPERTY_NAME_FILE_SPECIFICATION_VERSION_MAX))) {
+                throw new RuntimeException("unsupported map file specification version: " + version);
+            }
+            configuration.setFileSpecificationVersion(version);
 
             LOGGER.info("mapfile-writer version: " + configuration.getWriterVersion());
             LOGGER.info("mapfile format specification version: " + configuration.getFileSpecificationVersion());
@@ -79,6 +83,13 @@ public class MapFileWriterTask implements Sink {
             } else {
                 this.tileBasedGeoObjectStore = HDTileBasedDataProcessor.newInstance(configuration);
             }
+        }
+    }
+
+    @Override
+    public final void close() {
+        if (this.tileBasedGeoObjectStore != null) {
+            this.tileBasedGeoObjectStore.close();
         }
     }
 
@@ -105,9 +116,9 @@ public class MapFileWriterTask implements Sink {
         }
 
         LOGGER.info("finished...");
-        LOGGER.fine("total processed nodes: " + nfCounts.format(this.amountOfNodesProcessed));
-        LOGGER.fine("total processed ways: " + nfCounts.format(this.amountOfWaysProcessed));
-        LOGGER.fine("total processed relations: " + nfCounts.format(this.amountOfRelationsProcessed));
+        LOGGER.fine("total processed nodes: " + nfCounts.format(this.tileBasedGeoObjectStore.getNodesNumber()));
+        LOGGER.fine("total processed ways: " + nfCounts.format(this.tileBasedGeoObjectStore.getWaysNumber()));
+        LOGGER.fine("total processed relations: " + nfCounts.format(this.tileBasedGeoObjectStore.getRelationsNumber()));
 
         LOGGER.info("estimated memory consumption: "
                 + nfMegabyte.format(+((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / Math
@@ -160,7 +171,6 @@ public class MapFileWriterTask implements Sink {
                 this.tileBasedGeoObjectStore.addNode((Node) entity);
                 // hint to GC
                 entity = null;
-                this.amountOfNodesProcessed++;
                 break;
 
             // *******************************************************
@@ -169,7 +179,6 @@ public class MapFileWriterTask implements Sink {
             case Way:
                 this.tileBasedGeoObjectStore.addWay((Way) entity);
                 entity = null;
-                this.amountOfWaysProcessed++;
                 break;
 
             // *******************************************************
@@ -178,16 +187,8 @@ public class MapFileWriterTask implements Sink {
             case Relation:
                 Relation currentRelation = (Relation) entity;
                 this.tileBasedGeoObjectStore.addRelation(currentRelation);
-                this.amountOfRelationsProcessed++;
                 entity = null;
                 break;
-        }
-    }
-
-    @Override
-    public final void release() {
-        if (this.tileBasedGeoObjectStore != null) {
-            this.tileBasedGeoObjectStore.release();
         }
     }
 }

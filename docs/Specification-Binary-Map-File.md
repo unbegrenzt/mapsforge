@@ -14,15 +14,16 @@ The map file consists of several sub-files, each storing the map objects for a d
 
 - All latitude and longitude coordinates are stored in microdegrees (degrees × 10<sup>6</sup>).
 - Numeric fields with a fixed byte size are stored with *Big Endian* byte order.
-- Unsigned numeric fields with a variable byte encoding are marked with *`VBE-U` INT* and stored using [unsigned LEB128](https://en.wikipedia.org/wiki/LEB128#Unsigned_LEB128) format as follows:
+- Unsigned numeric fields with a variable byte encoding are marked with *`VBE-U` INT* and stored as follows:
   - the first bit of each byte is used for continuation info, the other seven bits for data.
   - the value of the first bit is 1 if the following byte belongs to the field, 0 otherwise.
   - each byte holds seven bits of the numeric value, starting with the least significant ones.
-- Signed numeric fields with a variable byte encoding are marked with *`VBE-S` INT* and stored using [signed LEB128](https://en.wikipedia.org/wiki/LEB128#Signed_LEB128) format as follows:
+- Signed numeric fields with a variable byte encoding are marked with *`VBE-S` INT* and stored as follows:
   - the first bit of each byte is used for continuation info, the other six (last byte) or seven (all other bytes) bits for data.
   - the value of the first bit is 1 if the following byte belongs to the field, 0 otherwise.
   - each byte holds six (last byte) or seven (all other bytes) bits of the numeric value, starting with the least significant ones.
   - the second bit in the last byte indicates the sign of the number. A value of 0 means positive, 1 negative.
+  - numeric value is stored as magnitude for negative values (as opposed to two's complement).
 - All strings are stored in UTF-8 as follows:
   - the length *L* of the UTF-8 encoded string in bytes as *`VBE-U` INT*.
   - *L* bytes for the UTF-8 encoding of the string.
@@ -112,7 +113,7 @@ To read the data of a specific tile in the sub-file, the position of the fixed-s
 |32|yes|POI signature|If the debug bit in the file header is set:<br />`***POIStartX***` where X defines the OSM-ID of the POI; the text is always padded to 32 bytes by adding whitespaces|
 |variable||position|geo coordinate difference to the top-left corner of the current tile as *`VBE-S` INT*, in the order lat-diff, lon-diff|
 |1||special byte|<ul><li>1.-4. bit: layer (OSM-Tag: layer=...) + 5 (to avoid negative values)</li><li>5.-8. bit: amount of tags for the POI</li></ul>|
-|variable||tag id|for each tag of the POI:<ul><li>tag id as *`VBE-U` INT*</li></ul>|
+|variable||tag id|for each tag of the POI:<ul><li>tag id as *`VBE-U` INT*</li><li>variable values as different data types, whose content can be evaluated from tag's wildcard</li></ul>|
 |1||flags|<ul><li>1. bit: flag for existence of a POI name</li><li>2. bit: flag for existence of a house number</li><li>3. bit: flag for existence of an elevation</li><li>4.-8. bit: reserved for future use</li></ul>|
 |variable|yes|name|name of the POI as a string|
 |variable|yes|house number|house number of the POI as a string|
@@ -129,7 +130,7 @@ To read the data of a specific tile in the sub-file, the position of the fixed-s
 |variable||way data size|number of bytes that are needed to encode the current way as *`VBE-U` INT*, starting from the sub tile bitmap (i.e. way signature and way size are not counted)|
 |2||sub tile bitmap|A tile on zoom level z is made up of exactly 16 sub tiles on zoom level z+2<br />for each sub tile (row-wise, left to right):<ul><li>1 bit that represents a flag whether the way is relevant for the sub tile</li></ul>Special case: coastline ways must always have all 16 bits set.|
 |1||special byte|<ul><li>1.-4. bit: layer (OSM-Tag: layer=...) + 5 (to avoid negative values)</li><li>5.-8. bit: amount of tags for the way</li></ul>|
-|variable||tag id|for each tag of the way:<ul><li>tag id as *`VBE-U` INT*</li></ul>|
+|variable||tag id|for each tag of the way:<ul><li>tag id as *`VBE-U` INT*</li><li>variable values as different data types, whose content can be evaluated from tag's wildcard</li></ul>|
 |1||flags|<ul><li>1. bit: flag for existence of a way name</li><li>2. bit: flag for existence of a house number</li><li>3. bit: flag for existence of a reference</li><li>4. bit: flag for existence of a label position</li><li>5. bit: flag for existence of *number of way data blocks* field<ul><li>case 0: field does not exist, number of blocks is one</li><li>case 1: field exists, more than one block</li></ul></li><li>6. bit: flag indicating encoding of way coordinate blocks<ul><li>case 0: single delta encoding</li><li>case 1: double delta encoding</li></ul></li><li>7.-8. bit: reserved for future use</li></ul>|
 |variable|yes|name|name of the way as a string|
 |variable|yes|house number|house number of the way as a string|
@@ -183,4 +184,5 @@ For double-delta encoding the lat-diff and lon-diff values describe the *change*
 |1|2010-11-21|Initial release of the specification|
 |2|2011-01-26|<ul><li>Introduced variable byte encoding for some numeric fields to reduce the file size</li><li>Modified some field names and descriptions for clarification</li><li>Offset encoding is now used on all coordinates</li></ul>|
 |3|2012-03-18|<ul><li>Ways are stored as multiple segments</li><li>Ways can also have a house number</li><li>Removed obsolete data</li><li>Added *language preference* field to the header</li><li>Added *file size* field to the header</li><li>Added *start zoom level* field to the header</li><li>Added *created by* field to the header</li><li>Added a flag for single and double delta encoding</li><li>Reordered some fields</li><li>Removed some data type related limitations</li></ul>|
-|4|2015-11-25|<ul><li>Added multilingual names storage</li></ul>|
+|4|2015-11-25|<ul><li>Multilingual names storage</li></ul>|
+|5|2017-12-03|<ul><li>Variable tag values storage</li></ul>|

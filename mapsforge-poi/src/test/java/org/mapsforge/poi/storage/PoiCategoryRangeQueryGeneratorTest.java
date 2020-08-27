@@ -22,6 +22,9 @@ import org.junit.Test;
  * This class tests the {@link PoiCategoryRangeQueryGenerator} class for common use cases.
  */
 public class PoiCategoryRangeQueryGeneratorTest {
+
+    private static final int POI_VERSION = 2;
+
     private PoiCategory flatRoot;
     private PoiCategory balancedRoot;
     private PoiCategoryManager flatCm;
@@ -48,7 +51,7 @@ public class PoiCategoryRangeQueryGeneratorTest {
         PoiCategoryFilter filter = new WhitelistPoiCategoryFilter();
         filter.addCategory(this.flatRoot);
 
-        String query = PoiCategoryRangeQueryGenerator.getSQLSelectString(filter, null);
+        String query = PoiCategoryRangeQueryGenerator.getSQLSelectString(filter, 0, POI_VERSION);
 
         System.out.println("Query: " + query);
 
@@ -66,7 +69,8 @@ public class PoiCategoryRangeQueryGeneratorTest {
         filter.addCategory(this.balancedCm.getPoiCategoryByTitle("l1_1"));
         filter.addCategory(this.balancedCm.getPoiCategoryByTitle("l1_2"));
 
-        String query = PoiCategoryRangeQueryGenerator.getSQLSelectString(filter, null);
+        String query = PoiCategoryRangeQueryGenerator.getSQLSelectString(filter, 0, POI_VERSION);
+
         System.out.println("Query: " + query);
 
         // TODO add assertions

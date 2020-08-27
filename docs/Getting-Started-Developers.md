@@ -4,7 +4,7 @@
 
 This article describes how to build the mapsforge project and libraries from scratch and how developers should start working.
 
-If you have any questions or problems, don't hesitate to ask our public [mapsforge-dev](https://groups.google.com/group/mapsforge-dev) mailing list for help. You can also report bugs and improvement requests via our [issue tracker](https://github.com/mapsforge/mapsforge/issues).
+If you have any questions or problems, don't hesitate to ask our public [forum](https://groups.google.com/group/mapsforge-dev) for help.
 
 ## Checkout the code
 
@@ -24,17 +24,16 @@ Mapsforge consists of the following core components:
 Extra Android components:
 
 - mapsforge-map-android: android specific map elements.
-- mapsforge-map-android-extras: android extra map elements.
 - mapsforge-poi-android: android specific poi elements.
 - [androidsvg](http://bigbadaboom.github.io/androidsvg/): SVG library for displaying SVG files as icons.
-- [spatialite-android](https://www.gaia-gis.it/fossil/libspatialite/wiki?name=splite-android): SQLite spatial library.
+- [sqlite-android](https://sqlite.org/android/): SQLite Android Bindings.
 
 Extra Java components:
 
 - mapsforge-map-awt: a Java-only library to display mapsforge maps.
 - mapsforge-poi-awt: java specific poi elements.
-- [svg-salamander](https://svgsalamander.java.net/): SVG library for displaying SVG files as icons. Improved jar can be found at the site.
-- [xerial/sqlite-jdbc](https://github.com/xerial/sqlite-jdbc): SQLite JDBC library.
+- [svg-salamander](https://github.com/blackears/svgSalamander): SVG library for displaying SVG files as icons.
+- [xerial/sqlite-jdbc](https://github.com/xerial/sqlite-jdbc): SQLite JDBC Driver.
 
 ### Branches
 
@@ -52,8 +51,7 @@ Code before latest release is not supported anymore (we do not have the resource
 - The Samples app in mapsforge-samples-android is meant as a template and test case for building apps based on this version.
 - There is now a MapViewerTemplate class for building Android apps, that gives simple hooks to implement an Android based application. For its use refer to the Samples app.
 - After a successful build, you will find the Samples apk in mapsforge-samples-android/build/outputs/apk
-- To run the Samples app, you will need to install any map called 'germany.map' onto the sdcard of a device or emulator.
-- It is probably best if the map contains the area of central Berlin.
+- To run the Samples app, you will need to install any map called 'berlin.map' onto the sdcard of a device or emulator.
 
 ### mapsforge-samples-awt
 
@@ -81,4 +79,4 @@ Android Studio integrates tightly with gradle. The easiest way to create a new a
 
 ## How to contribute
 
-[Guidelines](../.github/CONTRIBUTING.md) for repository contributors.
+[Guidelines](CONTRIBUTING.md) for repository contributors.

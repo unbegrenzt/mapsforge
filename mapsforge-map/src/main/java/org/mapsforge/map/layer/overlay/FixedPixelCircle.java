@@ -51,8 +51,11 @@ public class FixedPixelCircle extends Circle {
         super(latLong, radius, paintFill, paintStroke, keepAligned);
     }
 
-    public boolean contains(Point center, Point point) {
-        return center.distance(point) < this.getRadius() * (this.scaleRadius ? this.displayModel.getScaleFactor() : 1);
+    public synchronized boolean contains(Point center, Point point) {
+        // Touch min 20x20 px at baseline mdpi (160dpi)
+        double distance = Math.max(20 / 2 * this.displayModel.getScaleFactor(),
+                getRadius() * (this.scaleRadius ? this.displayModel.getScaleFactor() : 1));
+        return center.distance(point) < distance;
     }
 
     /**

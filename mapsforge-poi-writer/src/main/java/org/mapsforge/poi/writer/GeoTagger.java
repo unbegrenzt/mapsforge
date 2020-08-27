@@ -1,5 +1,6 @@
 /*
- * Copyright 2017 Gustl22
+ * Copyright 2017-2018 Gustl22
+ * Copyright 2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -15,31 +16,20 @@
 package org.mapsforge.poi.writer;
 
 import com.google.common.collect.Lists;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
-
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 import org.mapsforge.core.model.BoundingBox;
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.poi.storage.DbConstants;
 import org.mapsforge.poi.writer.logging.LoggerWrapper;
-import org.openstreetmap.osmosis.core.domain.v0_6.EntityType;
-import org.openstreetmap.osmosis.core.domain.v0_6.Relation;
-import org.openstreetmap.osmosis.core.domain.v0_6.RelationMember;
-import org.openstreetmap.osmosis.core.domain.v0_6.Tag;
-import org.openstreetmap.osmosis.core.domain.v0_6.Way;
-import org.openstreetmap.osmosis.core.domain.v0_6.WayNode;
+import org.openstreetmap.osmosis.core.domain.v0_6.*;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -53,9 +43,11 @@ class GeoTagger {
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
     private PreparedStatement pStmtInsertWayNodes = null;
     private PreparedStatement pStmtDeletePoiData = null;
+    private PreparedStatement pStmtDeletePoiCategory = null;
     private PreparedStatement pStmtDeletePoiIndex = null;
     private PreparedStatement pStmtUpdateData = null;
     private PreparedStatement pStmtNodesInBox = null;
+    private PreparedStatement pStmtTagsByID = null;
 
     //List of Administrative Boundaries Relations
     private List<List<Relation>> administrativeBoundaries;
@@ -67,8 +59,10 @@ class GeoTagger {
             this.pStmtInsertWayNodes = writer.conn.prepareStatement(DbConstants.INSERT_WAYNODES_STATEMENT);
             this.pStmtDeletePoiData = writer.conn.prepareStatement(DbConstants.DELETE_DATA_STATEMENT);
             this.pStmtDeletePoiIndex = writer.conn.prepareStatement(DbConstants.DELETE_INDEX_STATEMENT);
+            this.pStmtDeletePoiCategory = writer.conn.prepareStatement(DbConstants.DELETE_CATEGORY_MAP_STATEMENT);
             this.pStmtUpdateData = writer.conn.prepareStatement(DbConstants.UPDATE_DATA_STATEMENT);
             this.pStmtNodesInBox = writer.conn.prepareStatement(DbConstants.FIND_IN_BOX_STATEMENT);
+            this.pStmtTagsByID = writer.conn.prepareStatement(DbConstants.FIND_DATA_BY_ID_STATEMENT);
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -124,11 +118,12 @@ class GeoTagger {
                 pStmtInsertWayNodes.addBatch();
 
                 i++;
-            }
-            batchCountWays++;
-            if (batchCountWays % PoiWriter.BATCH_LIMIT == 0) {
-                pStmtInsertWayNodes.executeBatch();
-                pStmtInsertWayNodes.clearBatch();
+
+                batchCountWays++;
+                if (batchCountWays % PoiWriter.BATCH_LIMIT == 0) {
+                    pStmtInsertWayNodes.executeBatch();
+                    pStmtInsertWayNodes.clearBatch();
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -166,14 +161,28 @@ class GeoTagger {
     }
 
     void processBoundaries() {
+        long nPostalBounds = 0;
         for (Relation postalBoundary : postalBoundaries) {
+            if (writer.configuration.isProgressLogs()) {
+                if (++nPostalBounds % 10 == 0) {
+                    System.out.print("Progress: PostalBounds " + nPostalBounds + "/"
+                            + postalBoundaries.size() + " \r");
+                }
+            }
             processBoundary(postalBoundary, true);
         }
         commit();
 
         for (int i = administrativeBoundaries.size() - 1; i >= 0; i--) {
+            long nAdminBounds = 0;
             List<Relation> administrativeBoundary = administrativeBoundaries.get(i);
             for (Relation relation : administrativeBoundary) {
+                if (writer.configuration.isProgressLogs()) {
+                    if (++nAdminBounds % 10 == 0) {
+                        System.out.print("Progress: AdminLevel " + i + ": " + nAdminBounds + "/"
+                                + administrativeBoundary.size() + " \r");
+                    }
+                }
                 processBoundary(relation, false);
             }
             commit();
@@ -262,6 +271,7 @@ class GeoTagger {
 
         Iterator it = pois.entrySet().iterator();
         while (it.hasNext()) {
+            @SuppressWarnings("unchecked")
             Map.Entry<Poi, Map<String, String>> entry = (Map.Entry<Poi, Map<String, String>>) it.next();
 
             Map<String, String> tags = entry.getValue();
@@ -274,9 +284,11 @@ class GeoTagger {
                         long id = entry.getKey().id;
                         this.pStmtDeletePoiData.setLong(1, id);
                         this.pStmtDeletePoiIndex.setLong(1, id);
+                        this.pStmtDeletePoiCategory.setLong(1, id);
 
                         this.pStmtDeletePoiData.addBatch();
                         this.pStmtDeletePoiIndex.addBatch();
+                        this.pStmtDeletePoiCategory.addBatch();
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }
@@ -287,6 +299,8 @@ class GeoTagger {
             }
         }
         try {
+            pStmtDeletePoiCategory.executeBatch();
+            pStmtDeletePoiCategory.clearBatch();
             pStmtDeletePoiData.executeBatch();
             pStmtDeletePoiData.clearBatch();
             pStmtDeletePoiIndex.executeBatch();
@@ -318,13 +332,16 @@ class GeoTagger {
             }
 
             if (tagmap.keySet().contains(key)) {
+                // Process is_in tags
                 if (!key.equals("is_in")) {
                     continue;
                 }
                 String prev = tagmap.get(key);
+                // Continue if tag already set correctly
                 if (prev.contains(",") || prev.contains(";")) {
                     continue;
                 }
+                // If string is a correct value, append it to existent value;
                 if (tmpValue.contains(",") || tmpValue.contains(";")) {
                     tmpValue = (prev + "," + tmpValue);
                 }
@@ -332,13 +349,13 @@ class GeoTagger {
 
             //Write surrounding area as parent in "is_in" tag.
             tagmap.put(key, tmpValue);
-            batchCountRelation++;
             try {
-                this.pStmtUpdateData.setString(1, writer.tagsToString(tagmap));
                 this.pStmtUpdateData.setLong(2, poi.id);
+                this.pStmtUpdateData.setString(1, writer.tagsToString(tagmap));
 
                 this.pStmtUpdateData.addBatch();
 
+                batchCountRelation++;
                 if (batchCountRelation % PoiWriter.BATCH_LIMIT == 0) {
                     pStmtUpdateData.executeBatch();
                     pStmtUpdateData.clearBatch();
@@ -531,8 +548,14 @@ class GeoTagger {
                     continue;
                 }
 
-                Map<String, String> tagmap = writer.stringToTags(rs.getString(4));
-                int categ = rs.getInt(5);
+                //Handle Tags
+                this.pStmtTagsByID.setLong(1, id);
+                ResultSet rsTags = pStmtTagsByID.executeQuery();
+                Map<String, String> tagmap = new HashMap<>();
+                while (rsTags.next()) {
+                    tagmap.putAll(writer.stringToTags(rsTags.getString(2)));
+                }
+                rsTags.close();
 
                 pois.put(new Poi(id, lat, lon), tagmap);
                 LOGGER.finest("Bbox: InnerNode-Id: " + id + "; Lat: " + lat + "; Lon: " + lon + ";");

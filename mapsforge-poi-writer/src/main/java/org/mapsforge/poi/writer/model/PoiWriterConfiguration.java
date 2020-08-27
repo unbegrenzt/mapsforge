@@ -1,6 +1,7 @@
 /*
  * Copyright 2015-2017 devemux86
- * Copyright 2017 Gustl22
+ * Copyright 2017-2018 Gustl22
+ * Copyright 2019 Kamil Donoval
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -33,8 +34,10 @@ public class PoiWriterConfiguration {
     private int fileSpecificationVersion;
     private boolean filterCategories;
     private boolean names;
+    private boolean normalize;
     private File outputFile;
     private String preferredLanguage;
+    private boolean progressLogs;
     private URL tagMapping;
     private boolean ways;
     private String writerVersion;
@@ -148,6 +151,20 @@ public class PoiWriterConfiguration {
     }
 
     /**
+     * @return the normalize
+     */
+    public boolean isNormalize() {
+        return normalize;
+    }
+
+    /**
+     * @return the progressLogs
+     */
+    public boolean isProgressLogs() {
+        return this.progressLogs;
+    }
+
+    /**
      * @return the ways
      */
     public boolean isWays() {
@@ -234,6 +251,14 @@ public class PoiWriterConfiguration {
     }
 
     /**
+     * @param normalize the normalize to set
+     */
+    public void setNormalize(boolean normalize) {
+        this.normalize = normalize;
+    }
+
+
+    /**
      * @param outputFile the output file to set
      */
     public void setOutputFile(File outputFile) {
@@ -247,6 +272,13 @@ public class PoiWriterConfiguration {
         if (preferredLanguage != null && !preferredLanguage.isEmpty()) {
             this.preferredLanguage = preferredLanguage;
         }
+    }
+
+    /**
+     * @param progressLogs the progressLogs to set
+     */
+    public void setProgressLogs(boolean progressLogs) {
+        this.progressLogs = progressLogs;
     }
 
     /**

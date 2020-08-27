@@ -1,22 +1,20 @@
 buildscript {
     repositories {
+        google()
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.3'
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
+        classpath 'com.android.tools.build:gradle:4.0.1'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
     }
-}
-
-def filterProjects(filter) {
-    return subprojects.findAll { project -> filter.contains(project.name) }
 }
 
 allprojects {
     group = 'org.mapsforge'
     version = 'master-SNAPSHOT'
     ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
-    ext.androidBuildVersionTools = "26.0.1"
+
+    ext.androidBuildVersionTools = "29.0.3"
     ext.jUnitVersion = "4.12"
 
     if (JavaVersion.current().isJava8Compatible()) {
@@ -28,147 +26,27 @@ allprojects {
     }
 }
 
-// no injection of functions, so via inheritance
-def androidCompileSdk() { return 26 }
+static def androidCompileSdk() { return 29 }
 
-// Minimum API Level by Support Library
-def androidMinSdk() { return 14 }
+// 14 for Support Library, 16 for sqlite-android
+static def androidMinSdk() { return 16 }
 
-// this is the last SDK with the old permissions system, so this should not change in the future
-def androidTargetSdkOldPermissions() { return 22 }
+static def androidTargetSdk() { return 29 }
 
-// moving forward we will target the latest SDK (that will all have the new permissions system)
-def androidTargetSdkRuntimePermissions() { return androidCompileSdk() }
-
-def versionCode() { return 61 }
+static def versionCode() { return 1 }
 
 def versionName() { return version }
 
-// Configuration injection for all subprojects
-
 subprojects {
     repositories {
+        google()
         jcenter()
-        maven { url 'https://maven.google.com' }
+        maven { url 'https://jitpack.io' }
     }
 
     tasks.withType(JavaCompile) {
         sourceCompatibility = JavaVersion.VERSION_1_7
         targetCompatibility = JavaVersion.VERSION_1_7
-    }
-}
-
-// Configuration for all plain Java projects
-project.ext.javalibraryprojects = ["mapsforge-core", "mapsforge-map", "mapsforge-themes", "mapsforge-map-reader", "mapsforge-map-awt", "mapsforge-map-writer", "mapsforge-poi", "mapsforge-poi-awt", "mapsforge-poi-writer"]
-project.ext.javaprojects = project.javalibraryprojects + ["mapsforge-samples-awt"]
-
-configure(filterProjects(project.javalibraryprojects)) {
-    apply plugin: 'maven'
-
-    if (project.hasProperty("SONATYPE_USERNAME")) {
-        afterEvaluate {
-            project.apply from: "${rootProject.projectDir}/deploy.gradle"
-        }
-    }
-}
-
-configure(filterProjects(project.javaprojects)) {
-    apply plugin: 'java'
-    //apply plugin: 'checkstyle'
-
-    dependencies {
-        testCompile "junit:junit:$jUnitVersion"
-    }
-
-    /*checkstyle {
-        showViolations = false  // turn on for reporting
-        // as of Gradle 2.2.1 every sub project seems to require a checkstyle file, this
-        // directive forces all projects to use the shared file in the root project
-        configFile = rootProject.file('config/checkstyle/checkstyle.xml')
-    }*/
-
-    // set java source encoding, otherwise some tests fail
-    [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
-}
-
-// Configuration for Android projects
-project.ext.androidlibraryprojects = ["mapsforge-map-android", "mapsforge-map-android-extras", "spatialite-android", "mapsforge-poi-android"]
-project.ext.androidapkprojects = ["mapsforge-samples-android"]
-project.ext.androidprojects = project.androidlibraryprojects + project.androidapkprojects
-
-// TODO get checkstyle and pmd working for android (right now it does not work out of the box, so better wait for official fix)
-
-configure(filterProjects(project.androidapkprojects)) {
-    apply plugin: 'com.android.application'
-
-    android {
-        flavorDimensions "permission"
-
-        productFlavors {
-            oldpermissions {
-                dimension "permission"
-                targetSdkVersion androidTargetSdkOldPermissions()
-            }
-            runtimepermissions {
-                dimension "permission"
-                targetSdkVersion androidTargetSdkRuntimePermissions()
-            }
-        }
-    }
-}
-
-configure(filterProjects(project.androidlibraryprojects)) {
-    apply plugin: 'com.android.library'
-    apply plugin: 'com.github.dcendents.android-maven'
-
-    android.libraryVariants.all { variant ->
-        def name = variant.buildType.name
-        if (name.equals("debug")) {
-            print "Skipping debug jar"
-            return; // Skip debug builds.
-        }
-        def task = project.tasks.create "jar${name.capitalize()}", Jar
-        task.dependsOn variant.javaCompile
-        task.from variant.javaCompile.destinationDir
-        artifacts.add('archives', task);
-    }
-
-    if (project.hasProperty("SONATYPE_USERNAME")) {
-        afterEvaluate {
-            project.apply from: "${rootProject.projectDir}/deploy.gradle"
-        }
-    }
-}
-
-configure(filterProjects(project.androidprojects)) {
-
-    android {
-        compileSdkVersion androidCompileSdk()
-        buildToolsVersion "$androidBuildVersionTools"
-
-        compileOptions {
-            sourceCompatibility JavaVersion.VERSION_1_7
-            targetCompatibility JavaVersion.VERSION_1_7
-        }
-
-        defaultConfig {
-            versionCode versionCode()
-            versionName versionName()
-            minSdkVersion androidMinSdk()
-        }
-
-        sourceSets {
-            main {
-                manifest.srcFile 'AndroidManifest.xml'
-                java.srcDirs = ['src/main/java']
-                resources.srcDirs = ['src']
-                res.srcDirs = ['res']
-                assets.srcDirs = ['assets']
-            }
-        }
-
-        lintOptions {
-            abortOnError false
-        }
+        options.encoding = 'UTF-8'
     }
 }

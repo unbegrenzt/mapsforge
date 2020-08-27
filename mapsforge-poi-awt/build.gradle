@@ -1,4 +1,13 @@
+apply plugin: 'java-library'
+apply plugin: 'maven'
+
 dependencies {
-    compile project(":mapsforge-poi")
-    compile 'org.xerial:sqlite-jdbc:3.18.0'
+    api project(":mapsforge-poi")
+    api 'org.xerial:sqlite-jdbc:3.28.0'
+}
+
+if (project.hasProperty("SONATYPE_USERNAME")) {
+    afterEvaluate {
+        project.apply from: "${rootProject.projectDir}/deploy.gradle"
+    }
 }

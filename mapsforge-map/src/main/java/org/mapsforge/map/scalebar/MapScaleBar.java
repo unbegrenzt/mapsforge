@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2014 Ludwig M Brinckmann
- * Copyright 2014-2016 devemux86
+ * Copyright 2014-2019 devemux86
  * Copyright 2014 Erik Duisters
  *
  * This program is free software: you can redistribute it and/or modify it under the
@@ -24,8 +24,8 @@ import org.mapsforge.core.graphics.GraphicFactory;
 import org.mapsforge.core.model.MapPosition;
 import org.mapsforge.core.util.MercatorProjection;
 import org.mapsforge.map.model.DisplayModel;
+import org.mapsforge.map.model.IMapViewPosition;
 import org.mapsforge.map.model.MapViewDimension;
-import org.mapsforge.map.model.MapViewPosition;
 import org.mapsforge.map.view.MapView;
 
 /**
@@ -47,11 +47,12 @@ public abstract class MapScaleBar {
     protected final Bitmap mapScaleBitmap;
     protected final Canvas mapScaleCanvas;
     private final MapViewDimension mapViewDimension;
-    private final MapViewPosition mapViewPosition;
+    private final IMapViewPosition mapViewPosition;
     private int marginHorizontal;
     private int marginVertical;
-    private MapPosition prevMapPosition;
+    protected MapPosition prevMapPosition;
     protected boolean redrawNeeded;
+    protected final float scale;
     protected ScaleBarPosition scaleBarPosition;
     private boolean visible;
 
@@ -68,13 +69,14 @@ public abstract class MapScaleBar {
         }
     }
 
-    public MapScaleBar(MapViewPosition mapViewPosition, MapViewDimension mapViewDimension, DisplayModel displayModel,
-                       GraphicFactory graphicFactory, int width, int height) {
+    public MapScaleBar(IMapViewPosition mapViewPosition, MapViewDimension mapViewDimension, DisplayModel displayModel,
+                       GraphicFactory graphicFactory, int width, int height, float scale) {
         this.mapViewPosition = mapViewPosition;
         this.mapViewDimension = mapViewDimension;
         this.displayModel = displayModel;
         this.graphicFactory = graphicFactory;
         this.mapScaleBitmap = graphicFactory.createBitmap(width, height);
+        this.scale = scale;
 
         this.scaleBarPosition = DEFAULT_SCALE_BAR_POSITION;
 
@@ -216,7 +218,7 @@ public abstract class MapScaleBar {
         for (int scaleBarValue : scaleBarValues) {
             mapScaleValue = scaleBarValue;
             scaleBarLength = (int) (mapScaleValue / groundResolution);
-            if (scaleBarLength < (this.mapScaleBitmap.getWidth() - 10)) {
+            if (scaleBarLength < (this.mapScaleBitmap.getWidth() - 10 * this.scale)) {
                 break;
             }
         }

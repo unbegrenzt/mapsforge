@@ -1,9 +1,11 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2013-2014 Ludwig M Brinckmann
- * Copyright 2014-2016 devemux86
+ * Copyright 2014-2018 devemux86
  * Copyright 2014 Jordan Black
  * Copyright 2015 Andreas Schildbach
+ * Copyright 2018 mikes222
+ * Copyright 2019 mg4gh
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -23,12 +25,11 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.Scroller;
-
 import org.mapsforge.core.model.LatLong;
 import org.mapsforge.core.model.Point;
 import org.mapsforge.map.android.view.MapView;
 import org.mapsforge.map.layer.Layer;
-import org.mapsforge.map.model.MapViewPosition;
+import org.mapsforge.map.model.IMapViewPosition;
 
 /**
  * Central handling of touch gestures.
@@ -44,6 +45,7 @@ import org.mapsforge.map.model.MapViewPosition;
  * </ul>
  */
 public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener implements ScaleGestureDetector.OnScaleGestureListener, Runnable {
+    private boolean doubleTapEnabled = true;
     private final Scroller flinger;
     private int flingLastX, flingLastY;
     private float focusX, focusY;
@@ -64,10 +66,19 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
     }
 
     /**
+     * Get state of double tap gestures:<br/>
+     * - Double tap (zoom with focus)
+     */
+    public boolean isDoubleTapEnabled() {
+        return doubleTapEnabled;
+    }
+
+    /**
      * Get state of scale gestures:<br/>
      * - Scale<br/>
      * - Scale with focus<br/>
-     * - Quick scale (double tap + swipe)
+     * - Quick scale (double tap + swipe)<br/>
+     * - Double tap (zoom with focus)
      */
     public boolean isScaleEnabled() {
         return scaleEnabled;
@@ -75,8 +86,11 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
 
     @Override
     public boolean onDoubleTapEvent(MotionEvent e) {
-        int action = e.getActionMasked();
+        if (!this.scaleEnabled) {
+            return false;
+        }
 
+        int action = e.getActionMasked();
         switch (action) {
             case MotionEvent.ACTION_DOWN:
                 this.isInDoubleTap = true;
@@ -84,14 +98,16 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
             case MotionEvent.ACTION_UP:
                 // Quick scale in between (cancel double tap)
                 if (this.isInDoubleTap) {
-                    MapViewPosition mapViewPosition = this.mapView.getModel().mapViewPosition;
-                    if (mapViewPosition.getZoomLevel() < mapViewPosition.getZoomLevelMax()) {
+                    IMapViewPosition mapViewPosition = this.mapView.getModel().mapViewPosition;
+                    if (this.doubleTapEnabled && mapViewPosition.getZoomLevel() < mapViewPosition.getZoomLevelMax()) {
                         Point center = this.mapView.getModel().mapViewDimension.getDimension().getCenter();
                         byte zoomLevelDiff = 1;
                         double moveHorizontal = (center.x - e.getX()) / Math.pow(2, zoomLevelDiff);
                         double moveVertical = (center.y - e.getY()) / Math.pow(2, zoomLevelDiff);
                         LatLong pivot = this.mapView.getMapViewProjection().fromPixels(e.getX(), e.getY());
                         if (pivot != null) {
+                            this.mapView.onMoveEvent();
+                            this.mapView.onZoomEvent();
                             mapViewPosition.setPivot(pivot);
                             mapViewPosition.moveCenterAndZoom(moveHorizontal, moveVertical, zoomLevelDiff);
                         }
@@ -161,8 +177,11 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
 
         // Quick scale (no pivot)
         if (this.isInDoubleTap) {
+            this.mapView.onZoomEvent();
             this.pivot = null;
         } else {
+            this.mapView.onMoveEvent();
+            this.mapView.onZoomEvent();
             this.focusX = detector.getFocusX();
             this.focusY = detector.getFocusY();
             this.pivot = this.mapView.getMapViewProjection().fromPixels(focusX, focusY);
@@ -181,7 +200,7 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
             zoomLevelDiff = (byte) Math.round(zoomLevelOffset);
         }
 
-        MapViewPosition mapViewPosition = this.mapView.getModel().mapViewPosition;
+        IMapViewPosition mapViewPosition = this.mapView.getModel().mapViewPosition;
         if (zoomLevelDiff != 0 && pivot != null) {
             // Zoom with focus
             double moveHorizontal = 0, moveVertical = 0;
@@ -218,6 +237,14 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
         if (!this.isInScale && e1.getPointerCount() == 1 && e2.getPointerCount() == 1) {
+            for (int i = this.mapView.getLayerManager().getLayers().size() - 1; i >= 0; --i) {
+                Layer layer = this.mapView.getLayerManager().getLayers().get(i);
+                if (layer.onScroll(e1.getX(), e1.getY(), e2.getX(), e2.getY())) {
+                    return true;
+                }
+            }
+
+            this.mapView.onMoveEvent();
             this.mapView.getModel().mapViewPosition.moveCenter(-distanceX, -distanceY, false);
             return true;
         }
@@ -252,10 +279,19 @@ public class TouchGestureHandler extends GestureDetector.SimpleOnGestureListener
     }
 
     /**
+     * Set state of double tap gestures:<br/>
+     * - Double tap (zoom with focus)
+     */
+    public void setDoubleTapEnabled(boolean doubleTapEnabled) {
+        this.doubleTapEnabled = doubleTapEnabled;
+    }
+
+    /**
      * Set state of scale gestures:<br/>
      * - Scale<br/>
      * - Scale with focus<br/>
-     * - Quick scale (double tap + swipe)
+     * - Quick scale (double tap + swipe)<br/>
+     * - Double tap (zoom with focus)
      */
     public void setScaleEnabled(boolean scaleEnabled) {
         this.scaleEnabled = scaleEnabled;

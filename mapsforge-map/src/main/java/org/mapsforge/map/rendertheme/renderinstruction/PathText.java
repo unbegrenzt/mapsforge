@@ -1,7 +1,7 @@
 /*
  * Copyright 2010, 2011, 2012, 2013 mapsforge.org
  * Copyright 2014-2016 Ludwig M Brinckmann
- * Copyright 2016 devemux86
+ * Copyright 2016-2019 devemux86
  *
  * This program is free software: you can redistribute it and/or modify it under the
  * terms of the GNU Lesser General Public License as published by the Free Software
@@ -16,14 +16,7 @@
  */
 package org.mapsforge.map.rendertheme.renderinstruction;
 
-import org.mapsforge.core.graphics.Align;
-import org.mapsforge.core.graphics.Color;
-import org.mapsforge.core.graphics.Display;
-import org.mapsforge.core.graphics.FontFamily;
-import org.mapsforge.core.graphics.FontStyle;
-import org.mapsforge.core.graphics.GraphicFactory;
-import org.mapsforge.core.graphics.Paint;
-import org.mapsforge.core.graphics.Style;
+import org.mapsforge.core.graphics.*;
 import org.mapsforge.map.datastore.PointOfInterest;
 import org.mapsforge.map.layer.renderer.PolylineContainer;
 import org.mapsforge.map.model.DisplayModel;
@@ -40,7 +33,7 @@ import java.util.Map;
  * Represents a text along a polyline on the map.
  */
 public class PathText extends RenderInstruction {
-    private static final float REPEAT_GAP_DEFAULT = 50f;
+    private static final float REPEAT_GAP_DEFAULT = 100f;
     private static final float REPEAT_START_DEFAULT = 10f;
 
     private Display display;
@@ -107,7 +100,7 @@ public class PathText extends RenderInstruction {
             } else if (DY.equals(name)) {
                 this.dy = Float.parseFloat(value) * displayModel.getScaleFactor();
             } else if (FILL.equals(name)) {
-                this.fill.setColor(XmlUtils.getColor(graphicFactory, value, displayModel.getThemeCallback()));
+                this.fill.setColor(XmlUtils.getColor(graphicFactory, value, displayModel.getThemeCallback(), this));
             } else if (FONT_FAMILY.equals(name)) {
                 fontFamily = FontFamily.fromString(value);
             } else if (FONT_SIZE.equals(name)) {
@@ -127,7 +120,7 @@ public class PathText extends RenderInstruction {
             } else if (SCALE.equals(name)) {
                 this.scale = scaleFromValue(value);
             } else if (STROKE.equals(name)) {
-                this.stroke.setColor(XmlUtils.getColor(graphicFactory, value, displayModel.getThemeCallback()));
+                this.stroke.setColor(XmlUtils.getColor(graphicFactory, value, displayModel.getThemeCallback(), this));
             } else if (STROKE_WIDTH.equals(name)) {
                 this.stroke.setStrokeWidth(XmlUtils.parseNonNegativeFloat(name, value) * displayModel.getScaleFactor());
             } else {
